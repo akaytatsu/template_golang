@@ -1,0 +1,17 @@
+version: "3.7"
+
+volumes:
+  data:
+
+services:
+  app:
+    build:
+      context: ./src
+      dockerfile: ./Dockerfile-dev
+    env_file: ./src/.env
+    ports:
+      - 8080:8080
+    volumes:
+      - ./src:/app
+    environment:
+      - ENV=dev
