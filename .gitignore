@@ -5,6 +5,7 @@
 .env
 
 tmp/
+coverage.html
 
 ### Go ###
 # Binaries for programs and plugins
