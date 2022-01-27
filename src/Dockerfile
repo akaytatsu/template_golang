@@ -18,4 +18,6 @@ WORKDIR /app
 
 COPY --from=builder /app/app_bin /app
 
+EXPOSE 8080
+
 ENTRYPOINT ["/app/app_bin"]
