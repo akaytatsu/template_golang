@@ -1,4 +1,4 @@
-FROM golang:1.18.2 as builder
+FROM golang:1.18.4 as builder
 
 ARG PROJECT_NAME="app"
 ARG VERSION="dev"
