@@ -1,15 +1,11 @@
-FROM golang:1.19.3 AS base
+FROM golang:1.19-alpine AS base
 
 ENV GO111MODULE="on"
 ENV GOOS="linux"
 ENV CGO_ENABLED=0
 
 # System dependencies
-RUN apt update -y \
-    && apt install -y \
-    ca-certificates \
-    git \
-    && update-ca-certificates
+RUN apk add --no-cache ca-certificates curl bash
 
 ARG PROJECT_NAME="app"
 ARG VERSION="dev"
