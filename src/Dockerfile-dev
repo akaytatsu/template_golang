@@ -1,4 +1,4 @@
-FROM golang:1.18.4 AS base
+FROM golang:1.19.3 AS base
 
 ENV GO111MODULE="on"
 ENV GOOS="linux"
