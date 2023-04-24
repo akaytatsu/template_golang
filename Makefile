@@ -51,6 +51,9 @@ restart: show_env
 sh: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} exec ${ARGS} bash
 
+run: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} run ${ARGS}
+
 chown_project:
 	sudo chown -R "${USER}:${USER}" ./
 
