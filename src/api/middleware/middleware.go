@@ -2,17 +2,23 @@ package middleware
 
 import (
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-func Cors(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Authorization")
-	w.Header().Set("Content-Type", "application/json")
+func AuthenticatedMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// get bearer token from header
+		token := c.Request.Header.Get("Authorization")
 
-	if r.Method == "OPTIONS" {
-		return
+		// check if token is valid
+		if token == "Bearer x" {
+			c.Next()
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"message": "Unauthorized",
+			})
+			c.Abort()
+		}
 	}
-
-	next(w, r)
 }

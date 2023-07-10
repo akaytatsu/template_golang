@@ -61,13 +61,33 @@ dep_install: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app go get ${ARGS}
 	cd src && go get ${ARGS}
 
+auto_install: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app go get ./...
+	cd src && go get ./...
+
+generate: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app go generate ./...
+	sudo chown -R "${USER}:${USER}" ./
+
 logger: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} logs -f --tail 200 ${ARGS}
 
+test-watch: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app gotestsum --watch
+
+test-watch-web: show_env
+	go install github.com/smartystreets/goconvey@latest
+	cd src && goconvey -port 9090 -cover
+
 test: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app go test -v -bench=. ./... -timeout 30m
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app gotestsum
+
+mod_tidy: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app go mod tidy
 
 coverage: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app go test -v -coverprofile=coverage.out ./...
 	# docker-compose ${DOCKER_COMPOSE_FILE} exec app go tool cover -func=coverage.out
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app go tool cover -html=coverage.out -o coverage.html
+	xdg-open http://localhost:9070/coverage.html
+	cd src && php -S 0:9070
