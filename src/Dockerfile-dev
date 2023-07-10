@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine AS base
+FROM golang:1.20-alpine AS base
 
 ENV GO111MODULE="on"
 ENV GOOS="linux"
@@ -6,6 +6,9 @@ ENV CGO_ENABLED=0
 
 # System dependencies
 RUN apk add --no-cache ca-certificates curl bash
+RUN go install gotest.tools/gotestsum@latest
+RUN go install github.com/golang/mock/mockgen@v1.6.0
+RUN go install github.com/smartystreets/goconvey@latest
 
 ARG PROJECT_NAME="app"
 ARG VERSION="dev"
