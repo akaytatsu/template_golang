@@ -49,10 +49,9 @@ func TestUsecaseUser_CreateUser(t *testing.T) {
 	Convey("User can be created", t, func() {
 
 		err := usecase_user.NewService(mockUserRepo).Create(&entity.EntityUser{
-			Email:     "mailer@mailer.com",
-			LastName:  "Mailer",
-			FirstName: "Mailer",
-			Password:  "password33",
+			Email:    "mailer@mailer.com",
+			Name:     "Name",
+			Password: "password33",
 		})
 
 		So(err, ShouldBeNil)

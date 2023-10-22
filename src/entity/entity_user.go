@@ -10,19 +10,25 @@ import (
 const SECRET_KEY = "9an0afx$thw)k9#y*_d9-ch^r&a6ndi#x#dwu^52zbqw=hso(9"
 
 type SignedDetails struct {
-	ID        int
-	FirstName string
-	LastName  string
-	Email     string
+	ID    int
+	Name  string
+	Email string
 	jwt.StandardClaims
+}
+
+type EntityUserFilters struct {
+	IDs    []uint `json:"ids"`
+	Search string `json:"search"`
+	Active string `json:"active"`
 }
 
 type EntityUser struct {
 	ID        int
-	FirstName string    `json:"first_name" validate:"required,min=2,max=50"`
-	LastName  string    `json:"last_name"  validate:"required,min=2,max=50"`
+	Name      string    `json:"name"       validate:"required,min=3,max=120"`
 	Email     string    `json:"email"      validate:"required,email"`
-	Password  string    `json:"password"   validate:"required,min=8,max=120"`
+	Password  string    `json:"password"   validate:"required,min=4,max=120"`
+	IsAdmin   bool      `json:"is_admin" gorm:"default:false"`
+	Active    bool      `json:"active" gorm:"default:true"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -31,17 +37,25 @@ func NewUser(userParam EntityUser) (*EntityUser, error) {
 
 	now := time.Now()
 
-	password, err := GeneratePassword(userParam.Password)
+	var password string
+	var err error
 
-	if err != nil {
-		return nil, err
+	if userParam.Password == "" {
+		password, err = GeneratePassword(userParam.Password)
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		password = userParam.Password
 	}
 
 	u := &EntityUser{
-		FirstName: userParam.FirstName,
-		LastName:  userParam.LastName,
+		Name:      userParam.Name,
 		Email:     userParam.Email,
 		Password:  password,
+		IsAdmin:   userParam.IsAdmin,
+		Active:    userParam.Active,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -63,6 +77,17 @@ func (u *EntityUser) Validate() error {
 	return validate.Struct(u)
 }
 
+func (u *EntityUser) UpdatePassword(newPassword string) error {
+	hash, err := GeneratePassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	u.Password = hash
+
+	return nil
+}
+
 func (u *EntityUser) GetValidated() error {
 	err := u.Validate()
 	if err != nil {
@@ -81,10 +106,9 @@ func (u *EntityUser) GetValidated() error {
 func (u *EntityUser) JWTTokenGenerator() (signedToken string, signedRefreshToken string, err error) {
 
 	claims := SignedDetails{
-		ID:        u.ID,
-		FirstName: u.FirstName,
-		LastName:  u.LastName,
-		Email:     u.Email,
+		ID:    u.ID,
+		Name:  u.Name,
+		Email: u.Email,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 		},
