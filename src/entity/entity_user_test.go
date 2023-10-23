@@ -46,7 +46,7 @@ func TestEntityUser_ValidatedFail(t *testing.T) {
 		Password: "",
 	}
 
-	user, err := entity.NewUser(arg)
+	user, err := entity.NewUser(arg)make(type, 0)
 	assert.Nil(t, err)
 
 	err = user.GetValidated()
