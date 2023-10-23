@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"app/entity"
 	"fmt"
 	"os"
 
@@ -8,24 +9,39 @@ import (
 	"gorm.io/gorm"
 )
 
-var postgres_db = os.Getenv("POSTGRES_DB")
-var postgres_user = os.Getenv("POSTGRES_USER")
-var postgres_password = os.Getenv("POSTGRES_PASSWORD")
-var postgres_host = os.Getenv("POSTGRES_HOST")
-var postgres_port = os.Getenv("POSTGRES_PORT")
+var gormDB *gorm.DB
 
-func Connect() (*gorm.DB, error) {
-	var dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		postgres_host, postgres_user, postgres_password, postgres_db, postgres_port)
+func Connect() *gorm.DB {
 
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if gormDB == nil {
+		return conn()
+	}
+
+	return gormDB
 }
 
-func Disconnect(db *gorm.DB) (err error) {
-	conn, err := db.DB()
+func Migrations() {
+	db := Connect()
+
+	db.AutoMigrate(&entity.EntityUser{})
+}
+
+func conn() *gorm.DB {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		os.Getenv("POSTGRES_HOST"),
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_DB"),
+		os.Getenv("POSTGRES_PORT"),
+	)
+
+	conn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+
 	if err != nil {
-		return err
+		panic(err)
 	}
-	err = conn.Close()
-	return err
+
+	gormDB = conn
+
+	return gormDB
 }

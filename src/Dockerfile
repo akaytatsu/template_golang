@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine as builder
+FROM golang:1.21-alpine as builder
 
 ARG PROJECT_NAME="app"
 ARG VERSION="dev"
@@ -10,7 +10,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/app_bin .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app_bin .
 
 FROM debian:buster
 

@@ -1,10 +1,16 @@
 package handlers
 
 import (
+	"app/entity"
+	"app/infrastructure/repository"
 	usecase_user "app/usecase/user"
 	"net/http"
+	"strconv"
+
+	middleware "app/api/middleware"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type LoginData struct {
@@ -12,29 +18,186 @@ type LoginData struct {
 	Password string `json:"password"`
 }
 
-func LoginHandler(c *gin.Context, usecaseUser usecase_user.IUsecaseUser) {
+type UpdateUserPasswordData struct {
+	Email           string `json:"email"`
+	OldPassword     string `json:"oldPassword"`
+	NewPassword     string `json:"newPassword"`
+	ConfirmPassword string `json:"confirmPassword"`
+}
+
+type UserHandlers struct {
+	UsecaseUser usecase_user.IUsecaseUser
+}
+
+func NewUserHandler(usecaseUser usecase_user.IUsecaseUser) *UserHandlers {
+	return &UserHandlers{UsecaseUser: usecaseUser}
+}
+
+func (h UserHandlers) LoginHandler(c *gin.Context) {
 
 	var loginData LoginData
 
 	if err := c.ShouldBindJSON(&loginData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		handleError(c, err)
 		return
 	}
 
-	user, err := usecaseUser.LoginUser(loginData.Email, loginData.Password)
+	user, err := h.UsecaseUser.LoginUser(loginData.Email, loginData.Password)
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+	if exception := handleError(c, err); exception {
 		return
 	}
 
-	token, refreshToken, err := user.JWTTokenGenerator()
+	token, refreshToken, err := usecase_user.JWTTokenGenerator(*user)
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+	if exception := handleError(c, err); exception {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token, "refreshToken": refreshToken})
+	jsonResponse(c, http.StatusOK, gin.H{"token": token, "refreshToken": refreshToken})
+}
 
+func (h UserHandlers) GetMeHandler(c *gin.Context) {
+	user, err := h.UsecaseUser.GetUserByToken(c.GetHeader("Authorization"))
+
+	if exception := handleError(c, err); exception {
+		return
+	}
+
+	jsonResponse(c, http.StatusOK, user)
+}
+
+func (h UserHandlers) CreateUserHandler(c *gin.Context) {
+
+	var entityUser entity.EntityUser
+
+	if err := c.ShouldBindJSON(&entityUser); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	err := h.UsecaseUser.Create(&entityUser)
+
+	if exception := handleError(c, err); exception {
+		return
+	}
+
+	jsonResponse(c, http.StatusOK, gin.H{"message": "User created successfully"})
+
+}
+
+func (h UserHandlers) UpdateUserHandler(c *gin.Context) {
+
+	var entityUser entity.EntityUser
+
+	id := strconv.Itoa(c.GetInt("id"))
+
+	dataInt, _ := strconv.Atoi(id)
+
+	entityUser.ID = dataInt
+
+	if err := c.ShouldBindJSON(&entityUser); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	err := h.UsecaseUser.Update(&entityUser)
+
+	if exception := handleError(c, err); exception {
+		return
+	}
+
+	jsonResponse(c, http.StatusOK, gin.H{"message": "User updated successfully"})
+}
+
+func (h UserHandlers) DeleteUserHandler(c *gin.Context) {
+
+	var entityUser entity.EntityUser
+
+	if err := c.ShouldBindJSON(&entityUser); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	err := h.UsecaseUser.Delete(&entityUser)
+
+	if exception := handleError(c, err); exception {
+		return
+	}
+
+	jsonResponse(c, http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+func (h UserHandlers) UpdatePasswordHandler(c *gin.Context) {
+
+	var updatePasswordData UpdateUserPasswordData
+
+	if err := c.ShouldBindJSON(&updatePasswordData); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	id, _ := strconv.Atoi(c.Param("id"))
+
+	err := h.UsecaseUser.UpdatePassword(id, updatePasswordData.OldPassword, updatePasswordData.NewPassword, updatePasswordData.ConfirmPassword)
+
+	if exception := handleError(c, err); exception {
+		return
+	}
+
+	jsonResponse(c, http.StatusOK, gin.H{"message": "Password updated successfully"})
+}
+
+func (h UserHandlers) GetUsersHandler(c *gin.Context) {
+
+	var filters entity.EntityUserFilters
+
+	filters.Search = c.Query("search")
+	filters.Active = c.Query("active")
+
+	users, err := h.UsecaseUser.GetUsers(filters)
+
+	if exception := handleError(c, err); exception {
+		return
+	}
+
+	jsonResponse(c, http.StatusOK, users)
+}
+
+func (h UserHandlers) GetUserHandler(c *gin.Context) {
+
+	id, _ := strconv.Atoi(c.Param("id"))
+
+	user, err := h.UsecaseUser.GetUser(id)
+
+	if exception := handleError(c, err); exception {
+		return
+	}
+
+	jsonResponse(c, http.StatusOK, user)
+}
+
+func MountUsersHandlers(gin *gin.Engine, conn *gorm.DB) {
+
+	userHandlers := NewUserHandler(
+		usecase_user.NewService(
+			repository.NewUserPostgres(conn),
+		),
+	)
+
+	gin.GET("/", HomeHandler)
+	gin.POST("/api/login", userHandlers.LoginHandler)
+
+	gin.POST("/login", userHandlers.LoginHandler)
+
+	// user
+	group := gin.Group("/api/user")
+	group.Use(middleware.AuthenticatedMiddleware(userHandlers.UsecaseUser))
+	group.GET("/me", userHandlers.GetMeHandler)
+	group.POST("/create", userHandlers.CreateUserHandler)
+	group.PUT("/:id", userHandlers.UpdateUserHandler)
+	group.DELETE("/:id", userHandlers.DeleteUserHandler)
+	group.PUT("/password/:id", userHandlers.UpdatePasswordHandler)
+	group.GET("/list", userHandlers.GetUsersHandler)
+	group.GET("/:id", userHandlers.GetUserHandler)
 }

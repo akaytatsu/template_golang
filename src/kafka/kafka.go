@@ -5,18 +5,13 @@ import (
 	"app/infrastructure/repository"
 	kafka_hanlders "app/kafka/hanlders"
 	usecase_user "app/usecase/user"
-	"log"
 
 	"github.com/segmentio/kafka-go"
 )
 
 func StartKafka() {
 
-	db, err := postgres.Connect()
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	db := postgres.Connect()
 
 	repositoryUser := repository.NewUserPostgres(db)
 	usecaseUser := usecase_user.NewService(repositoryUser)

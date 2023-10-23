@@ -38,10 +38,9 @@ func TestKafkaHandleUser_CreateUser(t *testing.T) {
 
 		message := kafka.Message{
 			Value: utils.GenericMapToJson(map[string]any{
-				"first_name": "test",
-				"last_name":  "test",
-				"email":      "test@test.com",
-				"password":   "test587444",
+				"name":     "name",
+				"email":    "test@test.com",
+				"password": "test587444",
 			}),
 		}
 
