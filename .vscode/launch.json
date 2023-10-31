@@ -9,7 +9,6 @@
             "type": "go",
             "request": "attach",
             "mode": "remote",
-            "remotePath": "${workspaceFolder}",
             "substitutePath": [
                 {
                     "from": "${workspaceFolder}/src",
