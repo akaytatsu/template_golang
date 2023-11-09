@@ -51,3 +51,7 @@ services:
       - ./src:/app
       - ./database:/db
       - ./.docker/postgres:/docker-entrypoint-initdb.d
+  mail:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - 8025:8025
