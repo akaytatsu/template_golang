@@ -1,9 +1,9 @@
 package kafka
 
 import (
+	"app/config"
 	"context"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/segmentio/kafka-go"
@@ -27,9 +27,9 @@ func startKafkaConnection(topicParams []KafkaReadTopicsParams) {
 	TopicParams = topicParams
 
 	var topicConfigs []kafka.TopicConfig
-	KafkaBootstrapServers = os.Getenv("KAFKA_BOOTSTRAP_SERVER")
-	KafkaClientID = os.Getenv("KAFKA_CLIENT_ID")
-	KafkaGroupID = os.Getenv("KAFKA_GROUP_ID")
+	KafkaBootstrapServers = config.EnvironmentVariables.KAFKA_BOOTSTRAP_SERVER
+	KafkaClientID = config.EnvironmentVariables.KAFKA_CLIENT_ID
+	KafkaGroupID = config.EnvironmentVariables.KAFKA_GROUP_ID
 
 	var controllerConn *kafka.Conn
 

@@ -1,9 +1,9 @@
 package usecase_user
 
 import (
+	"app/config"
 	"app/entity"
 	"errors"
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -182,8 +182,8 @@ func ValidateToken(signedToken string) (claims *SignedDetails, err error) {
 func (u *UseCaseUser) CreateAdminUser() error {
 	user, err := entity.NewUser(entity.EntityUser{
 		Name:     "Admin",
-		Email:    os.Getenv("DEFAULT_ADMIN_MAIL"),
-		Password: os.Getenv("DEFAULT_ADMIN_PASSWORD"),
+		Email:    config.EnvironmentVariables.DEFAULT_ADMIN_MAIL,
+		Password: config.EnvironmentVariables.DEFAULT_ADMIN_PASSWORD,
 		IsAdmin:  true,
 		Active:   true,
 	})
