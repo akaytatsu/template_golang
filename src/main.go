@@ -2,6 +2,7 @@ package main
 
 import (
 	"app/api"
+	"app/config"
 	"app/cron"
 	"app/infrastructure/postgres"
 	"app/infrastructure/repository"
@@ -10,6 +11,9 @@ import (
 )
 
 func main() {
+
+	config.ReadEnvironmentVars()
+
 	cron.StartCronJobs()
 
 	conn := postgres.Connect()
