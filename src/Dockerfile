@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine as builder
+FROM golang:1.22-alpine as builder
 
 ARG PROJECT_NAME="app"
 ARG VERSION="dev"

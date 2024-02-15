@@ -91,3 +91,6 @@ coverage: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app go tool cover -html=coverage.out -o coverage.html
 	xdg-open http://localhost:9070/coverage.html
 	cd src && php -S 0:9070
+
+swagger: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app swag init

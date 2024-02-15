@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"strconv"
 
-	middleware "app/api/middleware"
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -33,6 +31,15 @@ func NewUserHandler(usecaseUser usecase_user.IUsecaseUser) *UserHandlers {
 	return &UserHandlers{UsecaseUser: usecaseUser}
 }
 
+// @Summary Login
+// @Description Login
+// @Tags User
+// @Accept  json
+// @Produce  json
+// @Param email body string true "Email"
+// @Param password body string true "Password"
+// @Success 200 {object} entity.EntityUser "success"
+// @Router /api/login [post]
 func (h UserHandlers) LoginHandler(c *gin.Context) {
 
 	var loginData LoginData
@@ -57,6 +64,14 @@ func (h UserHandlers) LoginHandler(c *gin.Context) {
 	jsonResponse(c, http.StatusOK, gin.H{"token": token, "refreshToken": refreshToken})
 }
 
+// @Summary Get me
+// @Description Get me
+// @Tags User
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Success 200 {object} entity.EntityUser "success"
+// @Router /api/user/me [get]
 func (h UserHandlers) GetMeHandler(c *gin.Context) {
 	user, err := h.UsecaseUser.GetUserByToken(c.GetHeader("Authorization"))
 
@@ -67,6 +82,15 @@ func (h UserHandlers) GetMeHandler(c *gin.Context) {
 	jsonResponse(c, http.StatusOK, user)
 }
 
+// @Summary Create user
+// @Description Create user
+// @Tags User
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param entity.EntityUser body entity.EntityUser true "User"
+// @Success 200 {object} entity.EntityUser "success"
+// @Router /api/user/create [post]
 func (h UserHandlers) CreateUserHandler(c *gin.Context) {
 
 	var entityUser entity.EntityUser
@@ -83,9 +107,18 @@ func (h UserHandlers) CreateUserHandler(c *gin.Context) {
 	}
 
 	jsonResponse(c, http.StatusOK, gin.H{"message": "User created successfully"})
-
 }
 
+// @Summary Update user
+// @Description Update user
+// @Tags User
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param id path int true "User ID"
+// @Param entity.EntityUser body entity.EntityUser true "User"
+// @Success 200 {object} entity.EntityUser "success"
+// @Router /api/user/{id} [put]
 func (h UserHandlers) UpdateUserHandler(c *gin.Context) {
 
 	var entityUser entity.EntityUser
@@ -110,6 +143,15 @@ func (h UserHandlers) UpdateUserHandler(c *gin.Context) {
 	jsonResponse(c, http.StatusOK, gin.H{"message": "User updated successfully"})
 }
 
+// @Summary Delete user
+// @Description Delete user
+// @Tags User
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param id path int true "User ID"
+// @Success 200 {object} entity.EntityUser "success"
+// @Router /api/user/{id} [delete]
 func (h UserHandlers) DeleteUserHandler(c *gin.Context) {
 
 	var entityUser entity.EntityUser
@@ -128,6 +170,16 @@ func (h UserHandlers) DeleteUserHandler(c *gin.Context) {
 	jsonResponse(c, http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
 
+// @Summary Update password
+// @Description Update password
+// @Tags User
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param id path int true "User ID"
+// @Param entity.EntityUser body entity.EntityUser true "User"
+// @Success 200 {object} entity.EntityUser "success"
+// @Router /api/user/password/{id} [put]
 func (h UserHandlers) UpdatePasswordHandler(c *gin.Context) {
 
 	var updatePasswordData UpdateUserPasswordData
@@ -148,6 +200,16 @@ func (h UserHandlers) UpdatePasswordHandler(c *gin.Context) {
 	jsonResponse(c, http.StatusOK, gin.H{"message": "Password updated successfully"})
 }
 
+// @Summary Get users
+// @Description Get users
+// @Tags User
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param search query string false "Search"
+// @Param active query string false "Active"
+// @Success 200 {object} entity.EntityUser "success"
+// @Router /api/user/list [get]
 func (h UserHandlers) GetUsersHandler(c *gin.Context) {
 
 	var filters entity.EntityUserFilters
@@ -164,6 +226,15 @@ func (h UserHandlers) GetUsersHandler(c *gin.Context) {
 	jsonResponse(c, http.StatusOK, users)
 }
 
+// @Summary Get user
+// @Description Get user
+// @Tags User
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param id path int true "User ID"
+// @Success 200 {object} entity.EntityUser "success"
+// @Router /api/user/{id} [get]
 func (h UserHandlers) GetUserHandler(c *gin.Context) {
 
 	id, _ := strconv.Atoi(c.Param("id"))
@@ -192,7 +263,8 @@ func MountUsersHandlers(gin *gin.Engine, conn *gorm.DB) {
 
 	// user
 	group := gin.Group("/api/user")
-	group.Use(middleware.AuthenticatedMiddleware(userHandlers.UsecaseUser))
+	SetAuthMiddleware(conn, group)
+
 	group.GET("/me", userHandlers.GetMeHandler)
 	group.POST("/create", userHandlers.CreateUserHandler)
 	group.PUT("/:id", userHandlers.UpdateUserHandler)

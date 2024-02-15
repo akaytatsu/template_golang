@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"app/api/middleware"
+	"app/infrastructure/repository"
+	usecase_user "app/usecase/user"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func handleError(c *gin.Context, err error) bool {
@@ -36,4 +40,12 @@ func RoutersHandler(c *gin.Context, r *gin.Engine) {
 	if gin.Mode() == gin.DebugMode {
 		c.JSON(200, routers)
 	}
+}
+
+func SetAuthMiddleware(conn *gorm.DB, group *gin.RouterGroup) {
+	usecaseUser := usecase_user.NewService(
+		repository.NewUserPostgres(conn),
+	)
+
+	group.Use(middleware.AuthenticatedMiddleware(usecaseUser))
 }
