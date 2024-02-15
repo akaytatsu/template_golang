@@ -10,6 +10,11 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
+	_ "app/docs"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func setupDatabase() *gorm.DB {
@@ -44,6 +49,14 @@ func StartWebServer() {
 	config.ReadEnvironmentVars()
 
 	r := SetupRouters()
+
+	url := ginSwagger.URL("http://localhost:8080/swagger/doc.json") // The url pointing to API definition
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
+
+	// se for release, reduz o log
+	if config.EnvironmentVariables.ISRELEASE {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	// Bind to a port and pass our router in
 	log.Fatal(r.Run())

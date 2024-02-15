@@ -8,6 +8,9 @@ import (
 var EnvironmentVariables EnvironmentVars
 
 func ReadEnvironmentVars() {
+
+	EnvironmentVariables.ISRELEASE = os.Getenv("IS_RELEASE") == "true"
+
 	// Read environment variables
 	EnvironmentVariables.POSTGRES_DB = os.Getenv("POSTGRES_DB")
 	EnvironmentVariables.POSTGRES_USER = os.Getenv("POSTGRES_USER")
