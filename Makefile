@@ -94,3 +94,12 @@ coverage: show_env
 
 swagger: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app swag init
+
+install_generator:
+	npm install -g generator-go-clean-architecture-crud
+
+update_generator:
+	npm update -g generator-go-clean-architecture-crud
+
+generator_crud:
+	yo go-clean-architecture-crud
