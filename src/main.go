@@ -6,6 +6,7 @@ import (
 	"app/cron"
 	"app/infrastructure/postgres"
 	"app/infrastructure/repository"
+	"app/kafka"
 	usecase_user "app/usecase/user"
 	"log"
 )
@@ -28,6 +29,8 @@ func main() {
 		log.Println("---------->     Error creating admin user     <----------")
 		log.Println(err)
 	}
+
+	go kafka.StartKafka()
 
 	api.StartWebServer()
 }
