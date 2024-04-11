@@ -41,14 +41,11 @@ func startKafkaConnection(topicParams []KafkaReadTopicsParams) {
 	defer controllerConn.Close()
 
 	for _, topicParam := range TopicParams {
-
-		topicConfigs = []kafka.TopicConfig{
-			{
-				Topic:             topicParam.Topic,
-				NumPartitions:     1,
-				ReplicationFactor: -1,
-			},
-		}
+		topicConfigs = append(topicConfigs, kafka.TopicConfig{
+			Topic:             topicParam.Topic,
+			NumPartitions:     1,
+			ReplicationFactor: -1,
+		})
 	}
 
 	err = controllerConn.CreateTopics(topicConfigs...)
