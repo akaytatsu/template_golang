@@ -3,7 +3,7 @@ package kafka
 import (
 	"app/infrastructure/postgres"
 	"app/infrastructure/repository"
-	kafka_hanlders "app/kafka/hanlders"
+	kafka_handlers "app/kafka/handlers"
 	usecase_user "app/usecase/user"
 
 	"github.com/segmentio/kafka-go"
@@ -21,7 +21,7 @@ func StartKafka() {
 	topicParams = append(topicParams, KafkaReadTopicsParams{
 		Topic: "user",
 		Handler: func(m kafka.Message) error {
-			return kafka_hanlders.CreateUser(m, usecaseUser)
+			return kafka_handlers.CreateUser(m, usecaseUser)
 		},
 	})
 

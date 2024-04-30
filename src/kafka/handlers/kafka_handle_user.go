@@ -1,4 +1,4 @@
-package kafka_hanlders
+package kafka_handlers
 
 import (
 	"app/entity"

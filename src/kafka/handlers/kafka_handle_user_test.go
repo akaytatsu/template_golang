@@ -1,7 +1,7 @@
-package kafka_hanlders_test
+package kafka_handlers_test
 
 import (
-	kafka_hanlders "app/kafka/hanlders"
+	kafka_handlers "app/kafka/handlers"
 	"app/mocks"
 	"app/pkg/utils"
 	usecase_user "app/usecase/user"
@@ -27,7 +27,7 @@ func TestKafkaHandleUser_CreateUser(t *testing.T) {
 			Value: utils.GenericMapToJson(map[string]any{}),
 		}
 
-		err := kafka_hanlders.CreateUser(message, usecaseUser)
+		err := kafka_handlers.CreateUser(message, usecaseUser)
 
 		convey.So(err, convey.ShouldNotBeNil)
 	})
@@ -44,7 +44,7 @@ func TestKafkaHandleUser_CreateUser(t *testing.T) {
 			}),
 		}
 
-		err := kafka_hanlders.CreateUser(message, usecaseUser)
+		err := kafka_handlers.CreateUser(message, usecaseUser)
 
 		convey.So(err, convey.ShouldBeNil)
 	})
