@@ -6,7 +6,7 @@ import (
 	kafka_handlers "app/kafka/handlers"
 	usecase_user "app/usecase/user"
 
-	"github.com/segmentio/kafka-go"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
 func StartKafka() {
@@ -20,8 +20,8 @@ func StartKafka() {
 
 	topicParams = append(topicParams, KafkaReadTopicsParams{
 		Topic: "user",
-		Handler: func(m kafka.Message) error {
-			return kafka_handlers.CreateUser(m, usecaseUser)
+		Handler: func(msg *kafka.Message) error {
+			return kafka_handlers.CreateUser(*msg, usecaseUser)
 		},
 	})
 

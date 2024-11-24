@@ -9,6 +9,8 @@ import (
 	"app/kafka"
 	usecase_user "app/usecase/user"
 	"log"
+
+	_ "time/tzdata" // Required for tzdata to work
 )
 
 func main() {

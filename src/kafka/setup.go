@@ -4,10 +4,8 @@ import (
 	"app/config"
 	"context"
 	"log"
-	"strings"
 
-	"github.com/segmentio/kafka-go"
-	"github.com/sirupsen/logrus"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
 var (
@@ -18,7 +16,7 @@ var (
 
 type KafkaReadTopicsParams struct {
 	Topic   string
-	Handler func(m kafka.Message) error
+	Handler func(m *kafka.Message) error
 }
 
 var TopicParams []KafkaReadTopicsParams
@@ -26,60 +24,57 @@ var TopicParams []KafkaReadTopicsParams
 func startKafkaConnection(topicParams []KafkaReadTopicsParams) {
 	TopicParams = topicParams
 
-	var topicConfigs []kafka.TopicConfig
+	var topicConfigs []kafka.TopicSpecification
 	KafkaBootstrapServers = config.EnvironmentVariables.KAFKA_BOOTSTRAP_SERVER
 	KafkaClientID = config.EnvironmentVariables.KAFKA_CLIENT_ID
 	KafkaGroupID = config.EnvironmentVariables.KAFKA_GROUP_ID
 
-	var controllerConn *kafka.Conn
-
-	controllerConn, err := kafka.Dial("tcp", strings.Split(KafkaBootstrapServers, ",")[0])
+	adminClient, err := kafka.NewAdminClient(&kafka.ConfigMap{"bootstrap.servers": KafkaBootstrapServers})
 	if err != nil {
-		log.Fatal("failed to dial leader:", err)
+		log.Fatalf("Failed to create admin client: %v", err)
 	}
-
-	defer controllerConn.Close()
+	defer adminClient.Close()
 
 	for _, topicParam := range TopicParams {
-		topicConfigs = append(topicConfigs, kafka.TopicConfig{
+		topicConfigs = append(topicConfigs, kafka.TopicSpecification{
 			Topic:             topicParam.Topic,
 			NumPartitions:     1,
-			ReplicationFactor: -1,
+			ReplicationFactor: 1,
 		})
 	}
 
-	err = controllerConn.CreateTopics(topicConfigs...)
+	_, err = adminClient.CreateTopics(context.Background(), topicConfigs)
 	if err != nil {
 		log.Println("Error creating topic: ", err)
 	}
 }
 
 func readTopics() {
-	l := logrus.New()
 
 	var topics []string
 	for _, topicParam := range TopicParams {
 		topics = append(topics, topicParam.Topic)
 	}
 
-	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     strings.Split(KafkaBootstrapServers, ","),
-		GroupID:     KafkaGroupID,
-		MinBytes:    10e3, // 10KB
-		MaxBytes:    10e6, // 10MB
-		StartOffset: kafka.FirstOffset,
-		// MaxWait:     1 * time.Second,
-		GroupTopics: topics,
-		// Logger:      kafka.LoggerFunc(l.Infof),
-		ErrorLogger: kafka.LoggerFunc(l.Errorf),
+	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers": KafkaBootstrapServers,
+		"group.id":          KafkaGroupID,
+		"auto.offset.reset": "earliest",
 	})
 
-	defer r.Close()
+	if err != nil {
+		log.Fatalf("Failed to create consumer: %v", err)
+	}
 
-	ctx := context.Background()
+	defer consumer.Close()
+
+	err = consumer.SubscribeTopics(topics, nil)
+	if err != nil {
+		log.Fatalf("Failed to subscribe to topics: %v", err)
+	}
 
 	for {
-		m, err := r.FetchMessage(ctx)
+		msg, err := consumer.ReadMessage(-1)
 		if err != nil {
 			log.Println("Error while fetching message:", err)
 			continue
@@ -87,13 +82,13 @@ func readTopics() {
 		var success bool = false
 
 		for _, topicParam := range TopicParams {
-			if topicParam.Topic == m.Topic {
+			if topicParam.Topic == *msg.TopicPartition.Topic {
 
 				if topicParam.Handler == nil {
 					continue
 				}
 
-				err = topicParam.Handler(m)
+				err = topicParam.Handler(msg)
 
 				if err != nil {
 					success = false
@@ -104,23 +99,40 @@ func readTopics() {
 		}
 
 		if success {
-			r.CommitMessages(ctx, m)
+			_, err = consumer.CommitMessage(msg)
+			if err != nil {
+				log.Printf("Failed to commit message: %v", err)
+			}
 		}
 	}
 
 }
 
 func PublishMessage(topic string, message string) error {
-	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: strings.Split(KafkaBootstrapServers, ","),
-		Topic:   topic,
-	})
+	producer, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": KafkaBootstrapServers})
+	if err != nil {
+		return err
+	}
+	defer producer.Close()
 
-	defer writer.Close()
+	deliveryChan := make(chan kafka.Event, 1)
 
-	messageToSend := kafka.Message{
-		Value: []byte(message),
+	err = producer.Produce(&kafka.Message{
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		Value:          []byte(message),
+	}, deliveryChan)
+	if err != nil {
+		return err
 	}
 
-	return writer.WriteMessages(context.Background(), messageToSend)
+	e := <-deliveryChan
+	m := e.(*kafka.Message)
+	if m.TopicPartition.Error != nil {
+		log.Printf("Delivery failed: %v", m.TopicPartition.Error)
+	} else {
+		log.Printf("Delivered message to %v", m.TopicPartition)
+	}
+	close(deliveryChan)
+
+	return nil
 }

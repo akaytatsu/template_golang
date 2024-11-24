@@ -7,8 +7,8 @@ import (
 	usecase_user "app/usecase/user"
 	"testing"
 
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/golang/mock/gomock"
-	"github.com/segmentio/kafka-go"
 	"github.com/smartystreets/goconvey/convey"
 )
 

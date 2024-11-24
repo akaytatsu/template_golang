@@ -5,7 +5,7 @@ import (
 	usecase_user "app/usecase/user"
 	"encoding/json"
 
-	"github.com/segmentio/kafka-go"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
 func CreateUser(m kafka.Message, usecaseUser usecase_user.IUsecaseUser) error {
