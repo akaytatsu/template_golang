@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.elastic.co/apm/module/apmgin"
 	"gorm.io/gorm"
 
 	_ "app/docs"
@@ -30,6 +31,7 @@ func setupRouter(conn *gorm.DB) *gin.Engine {
 	config.AllowCredentials = true
 	config.AddAllowHeaders("authorization")
 
+	r.Use(apmgin.Middleware(r))
 	r.Use(cors.New(config))
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
