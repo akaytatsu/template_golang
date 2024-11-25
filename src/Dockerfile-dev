@@ -2,19 +2,18 @@ FROM golang:1.23-alpine AS base
 
 ENV GO111MODULE="on"
 ENV GOOS="linux"
-ENV CGO_ENABLED=0
+ENV CGO_ENABLED=1
 
 # System dependencies
 RUN apk update && apk add --no-cache ca-certificates curl bash gcc libc-dev librdkafka-dev
 RUN go install -tags musl gotest.tools/gotestsum@latest
 RUN go install -tags musl github.com/golang/mock/mockgen@v1.6.0
 RUN go install -tags musl github.com/smartystreets/goconvey@latest
-RUN go install -tags musl github.com/swaggo/swag/cmd/swag@latest
 
 ARG PROJECT_NAME="app"
 ARG VERSION="dev"
 ARG COMMIT="none"
-ENV CGO_ENABLED=0
+ENV CGO_ENABLED=1
 ENV GOPROXY=https://proxy.golang.org
 
 FROM base AS dev
@@ -32,4 +31,4 @@ RUN go install -tags musl github.com/air-verse/air@latest
 EXPOSE 8080
 EXPOSE 2345
 
-ENTRYPOINT ["/go/bin/air", "-c", ".air.toml"]
+ENTRYPOINT ["/go/bin/air"]

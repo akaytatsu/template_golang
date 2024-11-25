@@ -6,7 +6,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -gcflags='all=-N -l' -o ./tmp/main ."
+cmd = "go build -tags musl -gcflags='all=-N -l' -o ./tmp/main ."
 # Binary file yields from `cmd`.
 bin = "tmp/main"
 
