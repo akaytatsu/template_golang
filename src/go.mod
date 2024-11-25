@@ -18,7 +18,6 @@ require (
 	go.elastic.co/apm v1.15.0
 	go.elastic.co/apm/module/apmhttp v1.15.0
 	golang.org/x/crypto v0.27.0
-	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.2
 )
 
@@ -51,6 +50,7 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	gorm.io/driver/postgres v1.5.2 // indirect
 	howett.net/plist v0.0.0-20181124034731-591f970eefbb // indirect
 )
 

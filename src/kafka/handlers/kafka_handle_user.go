@@ -8,11 +8,11 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-func CreateUser(m kafka.Message, usecaseUser usecase_user.IUsecaseUser) error {
+func CreateUser(msg kafka.Message, usecaseUser usecase_user.IUsecaseUser) error {
 
 	var entityUser entity.EntityUser
 
-	err := json.Unmarshal(m.Value, &entityUser)
+	err := json.Unmarshal(msg.Value, &entityUser)
 
 	if err != nil {
 		return err
