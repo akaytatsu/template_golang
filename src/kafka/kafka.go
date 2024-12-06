@@ -25,6 +25,6 @@ func StartKafka() {
 		},
 	})
 
-	startKafkaConnection(topicParams)
-	readTopics()
+	kafkaSetup(topicParams)
+	readTopics(topicParams)
 }

@@ -80,18 +80,18 @@ func readMessageMiddlewareAPM(msg *kafka.Message, handleFunc func(m *kafka.Messa
 	span, _ := apm.StartSpan(ctx, "Consume "+string(msg.Key), "ReadMessage")
 	span.Context.SetLabel("topic", *msg.TopicPartition.Topic)
 	span.Context.SetLabel("key", string(msg.Key))
+	span.Context.SetLabel("offset", msg.TopicPartition.Offset.String())
 	defer span.End()
 
 	// Processar a mensagem com a função de callback
 	err := handleFunc(msg)
 	if err != nil {
 		apm.CaptureError(ctx, err).Send()
+		transaction.End()
+		return err
 	}
-
 	transaction.End()
-
-	return err
-
+	return nil
 }
 
 // getTraceparentHeader retorna o cabeçalho traceparent da mensagem
