@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 var EnvironmentVariables EnvironmentVars
@@ -10,6 +11,15 @@ var EnvironmentVariables EnvironmentVars
 func ReadEnvironmentVars() {
 
 	EnvironmentVariables.ISRELEASE = os.Getenv("IS_RELEASE") == "true"
+
+	// Logging configuration
+	LogLevel := getEnvOrDefault("LOG_LEVEL", "INFO")
+	GinMode := getEnvOrDefault("GIN_MODE", "release")
+	GormLogLevel := getEnvOrDefault("GORM_LOG_LEVEL", "WARN")
+
+	EnvironmentVariables.LogLevel = strings.ToUpper(LogLevel)
+	EnvironmentVariables.GinMode = strings.ToLower(GinMode)
+	EnvironmentVariables.GormLogLevel = strings.ToUpper(GormLogLevel)
 
 	// Read environment variables
 	EnvironmentVariables.POSTGRES_DB = os.Getenv("POSTGRES_DB")
@@ -31,4 +41,16 @@ func ReadEnvironmentVars() {
 
 	EnvironmentVariables.DEFAULT_ADMIN_MAIL = os.Getenv("DEFAULT_ADMIN_MAIL")
 	EnvironmentVariables.DEFAULT_ADMIN_PASSWORD = os.Getenv("DEFAULT_ADMIN_PASSWORD")
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+
+	if value := os.Getenv(key); value != "" {
+
+		return value
+
+	}
+
+	return defaultValue
+
 }

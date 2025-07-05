@@ -14,6 +14,8 @@ import (
 
 	_ "app/docs"
 
+	custom_logger "app/pkg/logger"
+
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -24,16 +26,23 @@ func setupDatabase() *gorm.DB {
 }
 
 func setupRouter(conn *gorm.DB) *gin.Engine {
+	gin.SetMode(config.EnvironmentVariables.GinMode)
+
 	r := gin.New()
 
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AllowCredentials = true
-	config.AddAllowHeaders("authorization")
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowAllOrigins = true
+	corsConfig.AllowCredentials = true
+	corsConfig.AddAllowHeaders("authorization")
 
 	r.Use(apmgin.Middleware(r))
-	r.Use(cors.New(config))
-	r.Use(gin.Logger())
+	r.Use(cors.New(corsConfig))
+
+	// Configurar middleware de logging baseado no nível de log
+	if config.EnvironmentVariables.GinMode == "debug" || custom_logger.ShouldLogLevel(config.EnvironmentVariables.LogLevel, "INFO") {
+		r.Use(gin.Logger())
+	}
+
 	r.Use(gin.Recovery())
 
 	handlers.MountSamplesHandlers(r)

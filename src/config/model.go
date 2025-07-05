@@ -1,6 +1,10 @@
 package config
 
 type EnvironmentVars struct {
+	LogLevel     string
+	GinMode      string
+	GormLogLevel string
+
 	POSTGRES_DB       string
 	POSTGRES_USER     string
 	POSTGRES_PASSWORD string

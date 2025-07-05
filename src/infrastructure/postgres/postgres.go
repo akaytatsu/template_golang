@@ -3,6 +3,7 @@ package postgres
 import (
 	"app/config"
 	"app/entity"
+	custom_logger "app/pkg/logger"
 	"fmt"
 
 	// "gorm.io/driver/postgres"
@@ -36,7 +37,12 @@ func conn() *gorm.DB {
 		config.EnvironmentVariables.POSTGRES_PORT,
 	)
 
-	conn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// Configurar logger do GORM baseado na variável de ambiente
+
+	gormLogger := custom_logger.NewGormLogger(config.EnvironmentVariables.GormLogLevel)
+	conn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: gormLogger,
+	})
 
 	if err != nil {
 		panic(err)
