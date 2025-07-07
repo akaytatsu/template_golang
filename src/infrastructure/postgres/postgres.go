@@ -38,7 +38,6 @@ func conn() *gorm.DB {
 	)
 
 	// Configurar logger do GORM baseado na variável de ambiente
-
 	gormLogger := custom_logger.NewGormLogger(config.EnvironmentVariables.GormLogLevel)
 	conn, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: gormLogger,
