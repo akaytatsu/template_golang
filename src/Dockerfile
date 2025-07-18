@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.23-alpine AS base
 
 ARG PROJECT_NAME="app"
 ARG VERSION="dev"
@@ -11,7 +11,7 @@ WORKDIR /app
 COPY . .
 
 RUN apk update && apk add --no-cache gcc libc-dev librdkafka-dev
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -tags musl -o /app/app_bin .
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o /app/app_bin .
 
 FROM alpine:3.20
 

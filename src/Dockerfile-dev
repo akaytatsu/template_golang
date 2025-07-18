@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS base
+FROM golang:1.23-alpine AS base
 
 ENV GO111MODULE="on"
 ENV GOOS="linux"
@@ -9,6 +9,7 @@ RUN apk update && apk add --no-cache ca-certificates curl bash gcc libc-dev libr
 RUN go install -tags musl gotest.tools/gotestsum@latest
 RUN go install -tags musl github.com/golang/mock/mockgen@v1.6.0
 RUN go install -tags musl github.com/smartystreets/goconvey@latest
+RUN go install github.com/swaggo/swag/cmd/swag@latest
 
 ARG PROJECT_NAME="app"
 ARG VERSION="dev"
@@ -22,11 +23,17 @@ WORKDIR /app
 COPY . .
 
 RUN go mod download
+
+# Configure to use dynamic librdkafka instead of static
+ENV CGO_LDFLAGS="-lrdkafka"
+ENV CGO_CFLAGS="-I/usr/include/librdkafka"
+ENV KAFKA_USE_DYNAMIC_LINKING=1
+
 RUN go install -tags musl github.com/go-delve/delve/cmd/dlv@latest
 
 # Hot reloading mod
-RUN go get -tags musl -u github.com/air-verse/air && go install -tags musl github.com/go-delve/delve/cmd/dlv@latest
-RUN go install -tags musl github.com/air-verse/air@latest
+RUN go get -tags musl -u github.com/air-verse/air@v1.61.7 && go install -tags musl github.com/go-delve/delve/cmd/dlv@latest
+RUN go install -tags musl github.com/air-verse/air@v1.61.7
 
 EXPOSE 8080
 EXPOSE 2345
