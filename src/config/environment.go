@@ -41,6 +41,8 @@ func ReadEnvironmentVars() {
 
 	EnvironmentVariables.DEFAULT_ADMIN_MAIL = os.Getenv("DEFAULT_ADMIN_MAIL")
 	EnvironmentVariables.DEFAULT_ADMIN_PASSWORD = os.Getenv("DEFAULT_ADMIN_PASSWORD")
+
+	EnvironmentVariables.JWT_SECRET_KEY = getEnvOrDefault("JWT_SECRET_KEY", "default-secret-key-change-in-production")
 }
 
 func getEnvOrDefault(key, defaultValue string) string {

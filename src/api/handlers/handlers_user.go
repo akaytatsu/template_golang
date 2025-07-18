@@ -55,7 +55,7 @@ func (h UserHandlers) LoginHandler(c *gin.Context) {
 		return
 	}
 
-	token, refreshToken, err := usecase_user.JWTTokenGenerator(*user)
+	token, refreshToken, err := user.JWTTokenGenerator()
 
 	if exception := handleError(c, err); exception {
 		return

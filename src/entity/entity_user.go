@@ -1,13 +1,12 @@
 package entity
 
 import (
+	"app/config"
 	"time"
 
 	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
 )
-
-const SECRET_KEY = "9an0afx$thw)k9#y*_d9-ch^r&a6ndi#x#dwu^52zbqw=hso(9"
 
 type SignedDetails struct {
 	ID    int
@@ -120,13 +119,13 @@ func (u *EntityUser) JWTTokenGenerator() (signedToken string, signedRefreshToken
 		},
 	}
 
-	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(SECRET_KEY))
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(config.EnvironmentVariables.JWT_SECRET_KEY))
 
 	if err != nil {
 		return "", "", err
 	}
 
-	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(SECRET_KEY))
+	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(config.EnvironmentVariables.JWT_SECRET_KEY))
 
 	if err != nil {
 		return "", "", err
@@ -140,7 +139,7 @@ func (u *EntityUser) ValidateToken(signedToken string) (claims *SignedDetails, e
 		signedToken,
 		&SignedDetails{},
 		func(token *jwt.Token) (interface{}, error) {
-			return []byte(SECRET_KEY), nil
+			return []byte(config.EnvironmentVariables.JWT_SECRET_KEY), nil
 		},
 	)
 

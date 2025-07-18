@@ -25,5 +25,7 @@ type EnvironmentVars struct {
 	DEFAULT_ADMIN_MAIL     string
 	DEFAULT_ADMIN_PASSWORD string
 
+	JWT_SECRET_KEY string
+
 	ISRELEASE bool
 }

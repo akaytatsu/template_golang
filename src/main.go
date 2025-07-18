@@ -5,10 +5,7 @@ import (
 	"app/config"
 	"app/cron"
 	"app/infrastructure/postgres"
-	"app/infrastructure/repository"
 	"app/kafka"
-	usecase_user "app/usecase/user"
-	"log"
 
 	_ "time/tzdata" // Required for tzdata to work
 )
@@ -19,18 +16,14 @@ func main() {
 
 	cron.StartCronJobs()
 
-	conn := postgres.Connect()
+	postgres.Connect()
 	postgres.Migrations()
 
-	usecase := usecase_user.NewService(
-		repository.NewUserPostgres(conn),
-	)
-
-	err := usecase.CreateAdminUser()
-	if err != nil {
-		log.Println("---------->     Error creating admin user     <----------")
-		log.Println(err)
-	}
+	// Repository and usecase initialization can be added here if needed
+	// conn := postgres.Connect()
+	// usecase := usecase_user.NewService(
+	//	repository.NewUserPostgres(conn),
+	// )
 
 	go kafka.StartKafka()
 
