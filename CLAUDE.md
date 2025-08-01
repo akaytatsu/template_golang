@@ -1,4 +1,4 @@
-# Instruções para I.A - Projeto MS-DocSigner
+# Instruções para I.A - Projeto GoTemplate
 
 ## Configurações Gerais
 
