@@ -23,7 +23,6 @@ O projeto segue os princípios da **Clean Architecture** com separação clara d
 - **Documentação**: Swagger/OpenAPI
 - **Testes**: Go testing + Testify + GoConvey
 - **Containerização**: Docker e Docker Compose
-- **Monitoramento**: Elastic APM
 
 ## Pré-requisitos
 
@@ -101,6 +100,7 @@ make up
 ```
 
 A aplicação estará disponível em:
+
 - **API**: http://localhost:8080
 - **Swagger**: http://localhost:8080/swagger/index.html
 

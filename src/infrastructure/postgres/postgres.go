@@ -6,8 +6,7 @@ import (
 	custom_logger "app/pkg/logger"
 	"fmt"
 
-	// "gorm.io/driver/postgres"
-	postgres "go.elastic.co/apm/module/apmgormv2/driver/postgres"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 

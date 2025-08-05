@@ -139,7 +139,7 @@ func readTopics(topicParams []KafkaReadTopicsParams) {
 			}
 
 			// Processar a mensagem usando o handler
-			if err := readMessageMiddlewareAPM(msg, handler); err != nil {
+			if err := handler(msg); err != nil {
 				log.Printf("Erro ao processar mensagem do tópico %s: %v\n", *msg.TopicPartition.Topic, err)
 				continue
 			}
@@ -159,5 +159,5 @@ func readTopics(topicParams []KafkaReadTopicsParams) {
 }
 
 func PublishMessage(topic string, message string) error {
-	return publishMessageAPM(topic, message)
+	return PublishMessage(topic, message)
 }

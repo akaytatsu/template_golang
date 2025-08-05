@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"go.elastic.co/apm/module/apmgin"
 	"gorm.io/gorm"
 
 	_ "app/docs"
@@ -35,7 +34,6 @@ func setupRouter(conn *gorm.DB) *gin.Engine {
 	corsConfig.AllowCredentials = true
 	corsConfig.AddAllowHeaders("authorization")
 
-	r.Use(apmgin.Middleware(r))
 	r.Use(cors.New(corsConfig))
 
 	// Configurar middleware de logging baseado no nível de log
