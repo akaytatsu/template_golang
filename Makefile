@@ -18,6 +18,12 @@ show_env:
 	fi; \
 	ENV_PRINTED=1;"
 
+install_deps:
+	@echo "Installing dependencies..."
+	go install mvdan.cc/gofumpt@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+	go install github.com/air-verse/air@latest
+
 _cp_env_file:
 	cp -f ./src/.env.sample ./src/.env
 
@@ -103,3 +109,15 @@ update_generator:
 
 generator_crud:
 	yo go-clean-architecture-crud
+
+lint-validate:
+	cd src/ && golangci-lint run --path-mode=abs --config=".golangci.yml" --timeout=5m
+
+lint-fix:
+	cd src/ && golangci-lint run --path-mode=abs --config=".golangci.yml" --timeout=5m --fix
+
+fmt:
+	gofumpt -w ./src
+
+lint: fmt lint-fix lint-validate
+	@echo "Linting completed successfully."
