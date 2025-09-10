@@ -33,7 +33,6 @@ type EntityUser struct {
 }
 
 func NewUser(userParam EntityUser) (*EntityUser, error) {
-
 	now := time.Now()
 
 	var password string
@@ -41,7 +40,6 @@ func NewUser(userParam EntityUser) (*EntityUser, error) {
 
 	if userParam.Password == "" {
 		password, err = GeneratePassword(userParam.Password)
-
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +62,6 @@ func NewUser(userParam EntityUser) (*EntityUser, error) {
 
 func (u *EntityUser) ValidatePassword(p string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(p))
-
 	if err != nil {
 		return err
 	}
@@ -103,7 +100,6 @@ func (u *EntityUser) GetValidated() error {
 }
 
 func (u *EntityUser) JWTTokenGenerator() (signedToken string, signedRefreshToken string, err error) {
-
 	claims := SignedDetails{
 		ID:    u.ID,
 		Name:  u.Name,
@@ -120,13 +116,11 @@ func (u *EntityUser) JWTTokenGenerator() (signedToken string, signedRefreshToken
 	}
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(config.EnvironmentVariables.JWT_SECRET_KEY))
-
 	if err != nil {
 		return "", "", err
 	}
 
 	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(config.EnvironmentVariables.JWT_SECRET_KEY))
-
 	if err != nil {
 		return "", "", err
 	}
@@ -142,20 +136,16 @@ func (u *EntityUser) ValidateToken(signedToken string) (claims *SignedDetails, e
 			return []byte(config.EnvironmentVariables.JWT_SECRET_KEY), nil
 		},
 	)
-
 	if err != nil {
-
 		return nil, err
 	}
 
 	claims, ok := token.Claims.(*SignedDetails)
 	if !ok {
-
 		return nil, err
 	}
 
 	if claims.ExpiresAt < time.Now().Local().Unix() {
-
 		return nil, err
 	}
 
@@ -164,7 +154,6 @@ func (u *EntityUser) ValidateToken(signedToken string) (claims *SignedDetails, e
 
 func GeneratePassword(raw string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(raw), bcrypt.DefaultCost)
-
 	if err != nil {
 		return "", err
 	}

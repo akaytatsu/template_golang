@@ -74,7 +74,6 @@ func SecretHandler(c *gin.Context) {
 }
 
 func MountSamplesHandlers(r *gin.Engine) {
-
 	group := r.Group("/samples")
 
 	group.GET("/", HomeHandler)
@@ -87,7 +86,6 @@ func MountSamplesHandlers(r *gin.Engine) {
 	// group.GET("/routes", AllRoutesTextHandler)
 
 	r.GET("/routes", func(ctx *gin.Context) {
-
 		type Route struct {
 			Method  string
 			Path    string
@@ -95,7 +93,6 @@ func MountSamplesHandlers(r *gin.Engine) {
 		}
 
 		if gin.Mode() == gin.DebugMode {
-
 			routes := make([]Route, 0)
 			var response string
 
@@ -122,7 +119,6 @@ func MountSamplesHandlers(r *gin.Engine) {
 			}
 
 			ctx.String(http.StatusOK, "%v", response)
-
 		}
 	})
 }

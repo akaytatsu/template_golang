@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	usecase_user "app/usecase/user"
 	"net/http"
 	"strings"
+
+	usecase_user "app/usecase/user"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,7 +27,6 @@ func AuthenticatedMiddleware(usercase usecase_user.IUsecaseUser) gin.HandlerFunc
 
 		// check if token is valid
 		if err == nil {
-
 			// set user to context
 			c.Set("user", *user)
 
@@ -51,7 +51,6 @@ func AdminMiddleware(usercase usecase_user.IUsecaseUser) gin.HandlerFunc {
 
 		// check if token is valid
 		if err == nil {
-
 			if !user.IsAdmin {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"message": "Unauthorized",

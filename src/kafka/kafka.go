@@ -10,7 +10,6 @@ import (
 )
 
 func StartKafka() {
-
 	db := postgres.Connect()
 
 	repositoryUser := repository.NewUserPostgres(db)

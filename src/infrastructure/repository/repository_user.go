@@ -27,14 +27,11 @@ func (u *RepositoryUser) GetByMail(email string) (user *entity.EntityUser, err e
 }
 
 func (u *RepositoryUser) CreateUser(user *entity.EntityUser) error {
-
 	return u.DB.Create(&user).Error
 }
 
 func (u *RepositoryUser) UpdateUser(user *entity.EntityUser) error {
-
 	_, err := u.GetByMail(user.Email)
-
 	if err != nil {
 		return err
 	}
@@ -43,9 +40,7 @@ func (u *RepositoryUser) UpdateUser(user *entity.EntityUser) error {
 }
 
 func (u *RepositoryUser) DeleteUser(user *entity.EntityUser) error {
-
 	_, err := u.GetByMail(user.Email)
-
 	if err != nil {
 		return err
 	}
@@ -62,7 +57,6 @@ func (u *RepositoryUser) GetUsersFromIDs(ids []int) (users []entity.EntityUser, 
 }
 
 func (u *RepositoryUser) GetUsers(filters entity.EntityUserFilters) (users []entity.EntityUser, err error) {
-
 	users = make([]entity.EntityUser, 0)
 
 	DBFind := u.DB

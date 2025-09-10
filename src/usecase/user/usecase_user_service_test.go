@@ -3,8 +3,9 @@ package usecase_user_test
 import (
 	"app/entity"
 	"app/mocks"
-	usecase_user "app/usecase/user"
 	"testing"
+
+	usecase_user "app/usecase/user"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
@@ -12,7 +13,6 @@ import (
 )
 
 func TestUsecaseUser_LoginUser(t *testing.T) {
-
 	ctrl := gomock.NewController(t)
 
 	defer ctrl.Finish()
@@ -31,7 +31,6 @@ func TestUsecaseUser_LoginUser(t *testing.T) {
 }
 
 func TestUsecaseUser_CreateUser(t *testing.T) {
-
 	ctrl := gomock.NewController(t)
 
 	defer ctrl.Finish()
@@ -40,14 +39,12 @@ func TestUsecaseUser_CreateUser(t *testing.T) {
 	mockUserRepo.EXPECT().CreateUser(gomock.Any()).Return(nil)
 
 	Convey("User can't be created", t, func() {
-
 		err := usecase_user.NewService(mockUserRepo).Create(&entity.EntityUser{})
 
 		So(err, ShouldNotBeNil)
 	})
 
 	Convey("User can be created", t, func() {
-
 		err := usecase_user.NewService(mockUserRepo).Create(&entity.EntityUser{
 			Email:    "mailer@mailer.com",
 			Name:     "Name",

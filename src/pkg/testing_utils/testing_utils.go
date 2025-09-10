@@ -44,9 +44,9 @@ func (r *TestRequest) Init() {
 	r.executed = false
 	r.Response = httptest.NewRecorder()
 
-	r.Request, _ = http.NewRequest(r.Method, r.Url, nil)
+	r.Request, _ = http.NewRequestWithContext(context.Background(), r.Method, r.Url, nil)
 
-	r.Request, _ = http.NewRequest(r.Method, r.Url, bytes.NewBuffer(r.Body))
+	r.Request, _ = http.NewRequestWithContext(context.Background(), r.Method, r.Url, bytes.NewBuffer(r.Body))
 }
 
 func (r *TestRequest) SetHandle(httpHandle gin.HandlerFunc) {
@@ -54,7 +54,6 @@ func (r *TestRequest) SetHandle(httpHandle gin.HandlerFunc) {
 }
 
 func (r *TestRequest) Execute() {
-
 	r.Init()
 
 	r.Request.Header.Set("Content-Type", "application/json")
@@ -101,9 +100,13 @@ func (r *TestRequest) GetJsonResponse() map[string]any {
 	return jsonResponse
 }
 
+type userContextKey string
+
+const userKey userContextKey = "user"
+
 func (r *TestRequest) SetAuthorizationToken(firstName string, lastName string, email string) {
 	r.Request.Header.Set("Authorization", "Bearer "+r.getUserToken(firstName, lastName, email))
-	r.Request.WithContext(context.WithValue(r.Request.Context(), "user", "1"))
+	r.Request = r.Request.WithContext(context.WithValue(r.Request.Context(), userKey, "1"))
 }
 
 func (r *TestRequest) getUserToken(firstName string, lastName string, email string) string {

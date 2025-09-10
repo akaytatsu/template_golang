@@ -3,9 +3,10 @@ package handlers
 import (
 	"app/entity"
 	"app/infrastructure/repository"
-	usecase_user "app/usecase/user"
 	"net/http"
 	"strconv"
+
+	usecase_user "app/usecase/user"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -41,7 +42,6 @@ func NewUserHandler(usecaseUser usecase_user.IUsecaseUser) *UserHandlers {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/login [post]
 func (h UserHandlers) LoginHandler(c *gin.Context) {
-
 	var loginData LoginData
 
 	if err := c.ShouldBindJSON(&loginData); err != nil {
@@ -92,7 +92,6 @@ func (h UserHandlers) GetMeHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/create [post]
 func (h UserHandlers) CreateUserHandler(c *gin.Context) {
-
 	var entityUser entity.EntityUser
 
 	if err := c.ShouldBindJSON(&entityUser); err != nil {
@@ -120,7 +119,6 @@ func (h UserHandlers) CreateUserHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/{id} [put]
 func (h UserHandlers) UpdateUserHandler(c *gin.Context) {
-
 	var entityUser entity.EntityUser
 
 	id := strconv.Itoa(c.GetInt("id"))
@@ -153,7 +151,6 @@ func (h UserHandlers) UpdateUserHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/{id} [delete]
 func (h UserHandlers) DeleteUserHandler(c *gin.Context) {
-
 	var entityUser entity.EntityUser
 
 	if err := c.ShouldBindJSON(&entityUser); err != nil {
@@ -181,7 +178,6 @@ func (h UserHandlers) DeleteUserHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/password/{id} [put]
 func (h UserHandlers) UpdatePasswordHandler(c *gin.Context) {
-
 	var updatePasswordData UpdateUserPasswordData
 
 	if err := c.ShouldBindJSON(&updatePasswordData); err != nil {
@@ -211,7 +207,6 @@ func (h UserHandlers) UpdatePasswordHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/list [get]
 func (h UserHandlers) GetUsersHandler(c *gin.Context) {
-
 	var filters entity.EntityUserFilters
 
 	filters.Search = c.Query("search")
@@ -236,7 +231,6 @@ func (h UserHandlers) GetUsersHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/{id} [get]
 func (h UserHandlers) GetUserHandler(c *gin.Context) {
-
 	id, _ := strconv.Atoi(c.Param("id"))
 
 	user, err := h.UsecaseUser.GetUser(id)
@@ -249,7 +243,6 @@ func (h UserHandlers) GetUserHandler(c *gin.Context) {
 }
 
 func MountUsersHandlers(gin *gin.Engine, conn *gorm.DB) {
-
 	userHandlers := NewUserHandler(
 		usecase_user.NewService(
 			repository.NewUserPostgres(conn),

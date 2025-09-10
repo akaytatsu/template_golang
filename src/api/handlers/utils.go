@@ -3,10 +3,11 @@ package handlers
 import (
 	"app/api/middleware"
 	"app/infrastructure/repository"
-	usecase_user "app/usecase/user"
 	"math"
 	"net/http"
 	"strconv"
+
+	usecase_user "app/usecase/user"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -38,7 +39,7 @@ func RoutersHandler(c *gin.Context, r *gin.Engine) {
 		Path   string `json:"path"`
 	}
 
-	var routers []Router = make([]Router, 0)
+	routers := make([]Router, 0)
 
 	for _, route := range r.Routes() {
 		routers = append(routers, Router{

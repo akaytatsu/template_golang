@@ -1,11 +1,13 @@
 package kafka_handlers_test
 
 import (
-	kafka_handlers "app/kafka/handlers"
 	"app/mocks"
 	"app/pkg/utils"
-	usecase_user "app/usecase/user"
 	"testing"
+
+	kafka_handlers "app/kafka/handlers"
+
+	usecase_user "app/usecase/user"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/golang/mock/gomock"
@@ -20,7 +22,6 @@ func TestKafkaHandleUser_CreateUser(t *testing.T) {
 	mockUserRepo.EXPECT().CreateUser(gomock.Any()).Return(nil)
 
 	convey.Convey("Test KafkaHandleUser CreateUser failed", t, func() {
-
 		usecaseUser := usecase_user.NewService(mockUserRepo)
 
 		message := kafka.Message{
@@ -33,7 +34,6 @@ func TestKafkaHandleUser_CreateUser(t *testing.T) {
 	})
 
 	convey.Convey("Test KafkaHandleUser CreateUser success", t, func() {
-
 		usecaseUser := usecase_user.NewService(mockUserRepo)
 
 		message := kafka.Message{

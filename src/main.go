@@ -11,7 +11,6 @@ import (
 )
 
 func main() {
-
 	config.ReadEnvironmentVars()
 
 	cron.StartCronJobs()

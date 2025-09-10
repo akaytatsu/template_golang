@@ -23,7 +23,6 @@ import (
 // }
 
 func TestEntityUser_ValidatedSuccess(t *testing.T) {
-
 	arg := entity.EntityUser{
 		Name:     "Name",
 		Email:    "email@email.com",
@@ -35,11 +34,9 @@ func TestEntityUser_ValidatedSuccess(t *testing.T) {
 
 	err = user.Validate()
 	assert.Nil(t, err)
-
 }
 
 func TestEntityUser_ValidatedFail(t *testing.T) {
-
 	arg := entity.EntityUser{
 		Name:     "",
 		Email:    "",
@@ -51,5 +48,4 @@ func TestEntityUser_ValidatedFail(t *testing.T) {
 
 	err = user.GetValidated()
 	assert.NotNil(t, err)
-
 }

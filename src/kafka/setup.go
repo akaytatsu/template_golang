@@ -40,7 +40,7 @@ func kafkaSetup(topicParams []KafkaReadTopicsParams) {
 }
 
 func ensureTopics(broker string, topicParams []KafkaReadTopicsParams) {
-	// Timeout administrativo (exemplo: 30 segundos)
+	// Timeout administration (exemplo: 30 segundos)
 	adminTimeout := 30 * time.Second
 
 	adminClient, err := kafka.NewAdminClient(&kafka.ConfigMap{"bootstrap.servers": broker})

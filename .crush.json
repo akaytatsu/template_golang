@@ -1,0 +1,16 @@
+{
+    "$schema": "https://charm.land/crush.json",
+    "lsp": {
+        "go": {
+            "command": "gopls",
+            "filetypes": [
+                "go"
+            ]
+        }
+    },
+    "permissions": {
+        "allowed_tools": [
+            "bash"
+        ]
+    }
+}

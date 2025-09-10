@@ -9,7 +9,6 @@ import (
 var EnvironmentVariables EnvironmentVars
 
 func ReadEnvironmentVars() {
-
 	EnvironmentVariables.ISRELEASE = os.Getenv("IS_RELEASE") == "true"
 
 	// Logging configuration

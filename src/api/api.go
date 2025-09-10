@@ -1,11 +1,10 @@
 package api
 
 import (
-	"log"
-
 	"app/api/handlers"
 	"app/config"
 	"app/infrastructure/postgres"
+	"log"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
