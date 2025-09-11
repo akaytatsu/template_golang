@@ -3,7 +3,7 @@
 ## Configurações Gerais
 
 - **Idioma**: Sempre responda em português do Brasil
-- **Contexto**: Este é um microserviço Go para assinatura de documentos com integração Clicksign
+- **Contexto**: Este é um microserviço Go
 
 ## Regras de Desenvolvimento
 
