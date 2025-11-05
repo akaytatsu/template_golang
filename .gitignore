@@ -35,5 +35,7 @@ coverage.html
 .claude/
 .gemini/
 web-bundles/
+.crush.json
+crush.json
 
 # End of https://www.toptal.com/developers/gitignore/api/go
