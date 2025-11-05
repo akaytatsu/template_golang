@@ -30,5 +30,9 @@ coverage.html
 ### Go Patch ###
 /vendor/
 /Godeps/
+.bmad-core/
+.crush/
+.claude/
+.gemini/
 
 # End of https://www.toptal.com/developers/gitignore/api/go
