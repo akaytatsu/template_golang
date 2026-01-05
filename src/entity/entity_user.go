@@ -8,6 +8,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	// TokenExpirationDuration is the default duration for access tokens (24 hours)
+	TokenExpirationDuration = time.Hour * 24
+	// RefreshTokenExpirationDuration is the default duration for refresh tokens (1 year)
+	RefreshTokenExpirationDuration = time.Hour * 24 * 7 * 365
+)
+
 type SignedDetails struct {
 	ID    int
 	Name  string
@@ -38,7 +45,7 @@ func NewUser(userParam EntityUser) (*EntityUser, error) {
 	var password string
 	var err error
 
-	if userParam.Password == "" {
+	if userParam.Password != "" {
 		password, err = GeneratePassword(userParam.Password)
 		if err != nil {
 			return nil, err
@@ -105,13 +112,13 @@ func (u *EntityUser) JWTTokenGenerator() (signedToken string, signedRefreshToken
 		Name:  u.Name,
 		Email: u.Email,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
+			ExpiresAt: time.Now().Add(TokenExpirationDuration).Unix(),
 		},
 	}
 
 	refreshClaims := SignedDetails{
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 24 * 7 * 365).Unix(),
+			ExpiresAt: time.Now().Add(RefreshTokenExpirationDuration).Unix(),
 		},
 	}
 

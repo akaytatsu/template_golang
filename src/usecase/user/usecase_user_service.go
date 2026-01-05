@@ -66,23 +66,27 @@ func (u *UseCaseUser) UpdatePassword(id int, oldPassword, newPassword, confirmPa
 
 	err = user.ValidatePassword(oldPassword)
 	if err != nil {
-		return err
+		return errors.New("old password is incorrect")
 	}
 
 	if newPassword != confirmPassword {
 		return errors.New("passwords do not match")
 	}
 
-	user.UpdatePassword(newPassword)
+	// Validate new password before updating
+	tempUser := *user
+	tempUser.Password = newPassword
+	if err := tempUser.Validate(); err != nil {
+		return err
+	}
 
-	err = user.GetValidated()
+	// Now update the password with hash
+	err = user.UpdatePassword(newPassword)
 	if err != nil {
 		return err
 	}
 
-	err = u.repo.UpdateUser(user)
-
-	return err
+	return u.repo.UpdateUser(user)
 }
 
 func (u *UseCaseUser) GetUsersFromIDs(ids []int) (users []entity.EntityUser, err error) {
@@ -94,9 +98,5 @@ func (u *UseCaseUser) GetUsers(filters entity.EntityUserFilters) (users []entity
 }
 
 func (u *UseCaseUser) GetUser(id int) (user *entity.EntityUser, err error) {
-	return u.repo.GetUser(id)
-}
-
-func JWTTokenGenerator(u entity.EntityUser) (signedToken string, signedRefreshToken string, err error) {
-	return u.JWTTokenGenerator()
+	return u.repo.GetByID(id)
 }
