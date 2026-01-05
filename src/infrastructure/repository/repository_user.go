@@ -15,14 +15,12 @@ func NewUserPostgres(DB *gorm.DB) *RepositoryUser {
 }
 
 func (u *RepositoryUser) GetByID(id int) (user *entity.EntityUser, err error) {
-	u.DB.First(&user, id)
-
+	err = u.DB.First(&user, id).Error
 	return user, err
 }
 
 func (u *RepositoryUser) GetByMail(email string) (user *entity.EntityUser, err error) {
 	err = u.DB.Where("email = ?", email).First(&user).Error
-
 	return user, err
 }
 
@@ -31,7 +29,9 @@ func (u *RepositoryUser) CreateUser(user *entity.EntityUser) error {
 }
 
 func (u *RepositoryUser) UpdateUser(user *entity.EntityUser) error {
-	_, err := u.GetByMail(user.Email)
+	// Verify user exists before updating
+	var existingUser entity.EntityUser
+	err := u.DB.Where("email = ?", user.Email).First(&existingUser).Error
 	if err != nil {
 		return err
 	}
@@ -40,7 +40,9 @@ func (u *RepositoryUser) UpdateUser(user *entity.EntityUser) error {
 }
 
 func (u *RepositoryUser) DeleteUser(user *entity.EntityUser) error {
-	_, err := u.GetByMail(user.Email)
+	// Verify user exists before deleting
+	var existingUser entity.EntityUser
+	err := u.DB.Where("email = ?", user.Email).First(&existingUser).Error
 	if err != nil {
 		return err
 	}
@@ -50,32 +52,33 @@ func (u *RepositoryUser) DeleteUser(user *entity.EntityUser) error {
 
 func (u *RepositoryUser) GetUsersFromIDs(ids []int) (users []entity.EntityUser, err error) {
 	users = make([]entity.EntityUser, 0)
-
 	err = u.DB.Where("id IN ?", ids).Find(&users).Error
-
 	return users, err
 }
 
 func (u *RepositoryUser) GetUsers(filters entity.EntityUserFilters) (users []entity.EntityUser, err error) {
 	users = make([]entity.EntityUser, 0)
 
-	DBFind := u.DB
+	query := u.DB
 
 	if filters.Search != "" {
-		DBFind = DBFind.Where("name LIKE ? or email LIKE ?", "%"+filters.Search+"%", "%"+filters.Search+"%")
+		query = query.Where("name LIKE ? OR email LIKE ?", "%"+filters.Search+"%", "%"+filters.Search+"%")
 	}
 
+	// Handle Active filter - convert string to boolean
 	if filters.Active != "" {
-		DBFind = DBFind.Where("active = ?", filters.Active)
+		if filters.Active == "true" {
+			query = query.Where("active = ?", true)
+		} else if filters.Active == "false" {
+			query = query.Where("active = ?", false)
+		}
 	}
 
-	err = DBFind.Find(&users).Error
-
+	err = query.Find(&users).Error
 	return users, err
 }
 
+// GetUser is an alias for GetByID - kept for compatibility
 func (u *RepositoryUser) GetUser(id int) (user *entity.EntityUser, err error) {
-	u.DB.First(&user, id)
-
-	return user, err
+	return u.GetByID(id)
 }

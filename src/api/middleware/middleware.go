@@ -9,65 +9,78 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	bearerPrefix = "Bearer "
+)
+
+// extractBearerToken extracts the Bearer token from the Authorization header
+func extractBearerToken(authHeader string) (string, bool) {
+	if !strings.HasPrefix(authHeader, bearerPrefix) {
+		return "", false
+	}
+	return strings.TrimPrefix(authHeader, bearerPrefix), true
+}
+
 func AuthenticatedMiddleware(usercase usecase_user.IUsecaseUser) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// get bearer token from header
-		bearerToken := c.Request.Header.Get("Authorization")
+		authHeader := c.Request.Header.Get("Authorization")
 
-		if len(strings.Split(bearerToken, " ")) != 2 {
+		token, valid := extractBearerToken(authHeader)
+		if !valid {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Unauthorized",
+				"message": "Unauthorized: missing or invalid authorization header",
 			})
 			c.Abort()
+			return
 		}
-
-		token := strings.Split(bearerToken, " ")[1]
 
 		user, err := usercase.GetUserByToken(token)
-
-		// check if token is valid
-		if err == nil {
-			// set user to context
-			c.Set("user", *user)
-
-			c.Next()
-		} else {
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Unauthorized",
+				"message": "Unauthorized: invalid token",
 			})
 			c.Abort()
+			return
 		}
+
+		// set user to context
+		c.Set("user", *user)
+		c.Next()
 	}
 }
 
 func AdminMiddleware(usercase usecase_user.IUsecaseUser) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// get bearer token from header
-		token := c.Request.Header.Get("Authorization")
+		authHeader := c.Request.Header.Get("Authorization")
 
-		// token := strings.Split(bearerToken, " ")[1]
-
-		user, err := usercase.GetUserByToken(token)
-
-		// check if token is valid
-		if err == nil {
-			if !user.IsAdmin {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"message": "Unauthorized",
-				})
-				c.Abort()
-				return
-			}
-
-			// set user to context
-			c.Set("user", *user)
-
-			c.Next()
-		} else {
+		token, valid := extractBearerToken(authHeader)
+		if !valid {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Unauthorized",
+				"message": "Unauthorized: missing or invalid authorization header",
 			})
 			c.Abort()
+			return
 		}
+
+		user, err := usercase.GetUserByToken(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"message": "Unauthorized: invalid token",
+			})
+			c.Abort()
+			return
+		}
+
+		if !user.IsAdmin {
+			c.JSON(http.StatusForbidden, gin.H{
+				"message": "Forbidden: admin access required",
+			})
+			c.Abort()
+			return
+		}
+
+		// set user to context
+		c.Set("user", *user)
+		c.Next()
 	}
 }
