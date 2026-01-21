@@ -25,10 +25,16 @@ install_deps:
 	go install github.com/air-verse/air@latest
 
 _cp_env_file:
-	cp -f ./src/.env.sample ./src/.env
+	@cp -f src/.env.sample .env
+
+_ensure_env:
+	@if [ ! -f .env ]; then \
+		echo "Arquivo .env não encontrado. Copiando de src/.env.sample..."; \
+		cp src/.env.sample .env; \
+		echo "Arquivo .env criado com sucesso."; \
+	fi
 
 init: _cp_env_file
-	sudo snap install go --classic
 	cd ./src
 	go install golang.org/x/tools/gopls@latest
 
@@ -36,7 +42,7 @@ _rebuild: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} down
 	docker-compose ${DOCKER_COMPOSE_FILE} build --no-cache --force-rm
 
-up: show_env
+up: show_env _ensure_env
 	docker-compose ${DOCKER_COMPOSE_FILE} up -d --remove-orphans
 
 logf: show_env
