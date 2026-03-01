@@ -130,3 +130,13 @@ fmt:
 
 lint: fmt lint-fix lint-validate
 	@echo "Linting completed successfully."
+
+# Security vulnerability scanning
+govulncheck: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app govulncheck ./...
+
+govulncheck-install: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app go install golang.org/x/vuln/cmd/govulncheck@latest
+
+govulncheck-local:
+	cd src && govulncheck ./...
