@@ -1,7 +1,7 @@
 # ============================================================================
 # STAGE 1: Builder
 # ============================================================================
-FROM golang:1.25-bookworm AS builder
+FROM golang:1.25.5-bookworm AS builder
 
 # Environment variables for build
 ENV CGO_ENABLED=1 \
