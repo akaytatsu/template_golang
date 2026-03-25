@@ -1,4 +1,4 @@
-FROM golang:1.24-bookworm AS base
+FROM golang:1.25-bookworm AS base
 
 ENV GO111MODULE="on"
 ENV GOOS="linux"
@@ -7,7 +7,7 @@ ENV GOPROXY=https://proxy.golang.org
 
 # System dependencies
 RUN apt-get update && apt-get install -y ca-certificates curl bash gcc \
-    libc-dev librdkafka-dev
+libc-dev librdkafka-dev
 
 # Usar librdkafka do sistema (glibc) em vez da versão estática musl
 ENV CGO_CFLAGS="-O2 -g"
@@ -16,12 +16,12 @@ ENV PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig"
 
 # Instalar todas as ferramentas uma única vez
 RUN go install gotest.tools/gotestsum@latest && \
-    go install github.com/golang/mock/mockgen@v1.6.0 && \
-    go install github.com/smartystreets/goconvey@latest && \
-    go install github.com/go-delve/delve/cmd/dlv@latest && \
-    go install github.com/air-verse/air@v1.61.1 && \
-    go install github.com/swaggo/swag/cmd/swag@latest && \
-    go install golang.org/x/vuln/cmd/govulncheck@latest
+go install github.com/golang/mock/mockgen@v1.6.0 && \
+go install github.com/smartystreets/goconvey@latest && \
+go install github.com/go-delve/delve/cmd/dlv@latest && \
+go install github.com/air-verse/air@v1.61.1 && \
+go install github.com/swaggo/swag/cmd/swag@latest && \
+go install golang.org/x/vuln/cmd/govulncheck@latest
 
 FROM base AS dev
 WORKDIR /app

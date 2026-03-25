@@ -4,7 +4,7 @@ import (
 	"app/config"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -12,7 +12,7 @@ type SignedDetails struct {
 	ID    int
 	Name  string
 	Email string
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 type EntityUserFilters struct {
@@ -104,14 +104,14 @@ func (u *EntityUser) JWTTokenGenerator() (signedToken string, signedRefreshToken
 		ID:    u.ID,
 		Name:  u.Name,
 		Email: u.Email,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
 		},
 	}
 
 	refreshClaims := SignedDetails{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 24 * 7 * 365).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7 * 365)),
 		},
 	}
 
@@ -145,7 +145,7 @@ func (u *EntityUser) ValidateToken(signedToken string) (claims *SignedDetails, e
 		return nil, err
 	}
 
-	if claims.ExpiresAt < time.Now().Local().Unix() {
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(time.Now()) {
 		return nil, err
 	}
 

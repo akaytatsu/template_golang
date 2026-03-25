@@ -131,12 +131,35 @@ fmt:
 lint: fmt lint-fix lint-validate
 	@echo "Linting completed successfully."
 
-# Security vulnerability scanning
-govulncheck: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app govulncheck ./...
+# Trivy - Security Scanner (Docker)
+TRIVY_IMAGE ?= aquasec/trivy:latest
 
-govulncheck-install: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app go install golang.org/x/vuln/cmd/govulncheck@latest
+security-scan:
+	@echo "Executando varredura de vulnerabilidades na pasta . (Trivy Docker)..."
+	docker run --rm -v $(PWD):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
+		--scanners vuln,misconfig,secret \
+		--exit-code 0 \
+		--severity HIGH,CRITICAL,MEDIUM \
+		/project
 
-govulncheck-local:
-	cd src && govulncheck ./...
+security-scan-json:
+	@echo "Executando varredura de vulnerabilidades (saída JSON)..."
+	docker run --rm -v $(PWD):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
+		--scanners vuln,misconfig,secret \
+		--exit-code 0 \
+		--severity HIGH,CRITICAL,MEDIUM \
+		--format json \
+		-o /project/trivy-report.json \
+		/project
+
+security-scan-table:
+	@echo "Executando varredura de vulnerabilidades (formato tabela)..."
+	docker run --rm -v $(PWD):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
+		--scanners vuln,misconfig,secret \
+		--exit-code 0 \
+		--format table \
+		/project
+
+clean-trivy-cache:
+	@echo "Limpando cache do Trivy..."
+	docker volume rm -f trivy-cache
