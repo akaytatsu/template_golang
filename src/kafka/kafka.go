@@ -25,5 +25,9 @@ func StartKafka() {
 	})
 
 	kafkaSetup(topicParams)
-	readTopics(topicParams)
+
+	// Só inicia leitura de tópicos se houver tópicos configurados e conexão estabelecida
+	if len(topicParams) > 0 && KafkaBootstrapServers != "" {
+		readTopics(topicParams)
+	}
 }

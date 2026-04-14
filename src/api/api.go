@@ -45,6 +45,11 @@ func setupRouter(conn *gorm.DB) *gin.Engine {
 	handlers.MountSamplesHandlers(r)
 	handlers.MountUsersHandlers(r, conn)
 
+	// Health check endpoint
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
 	return r
 }
 

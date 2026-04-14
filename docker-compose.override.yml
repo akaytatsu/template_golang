@@ -1,3 +1,5 @@
+version: "3.7"
+
 volumes:
   data:
   go-cache:
@@ -17,8 +19,16 @@ services:
     environment:
       - ENV=dev
     depends_on:
+      db:
+        condition: service_started
       kafka:
-        condition: service_healthy
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
   zookeeper:
     image: confluentinc/cp-zookeeper:7.9.1
     environment:

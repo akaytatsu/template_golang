@@ -6,7 +6,7 @@ ENV CGO_ENABLED=1
 ENV GOPROXY=https://proxy.golang.org
 
 # System dependencies
-RUN apt-get update && apt-get install -y ca-certificates curl bash gcc \
+RUN apt-get update && apt-get install -y ca-certificates curl bash gcc wget \
 libc-dev librdkafka-dev
 
 # Usar librdkafka do sistema (glibc) em vez da versão estática musl

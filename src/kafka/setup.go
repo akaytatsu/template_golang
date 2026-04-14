@@ -45,7 +45,7 @@ func ensureTopics(broker string, topicParams []KafkaReadTopicsParams) {
 
 	adminClient, err := kafka.NewAdminClient(&kafka.ConfigMap{"bootstrap.servers": broker})
 	if err != nil {
-		log.Fatalf("Failed to create AdminClient: %s\n", err)
+		log.Printf("Failed to create AdminClient: %s\n", err)
 	}
 	defer adminClient.Close()
 
@@ -65,7 +65,7 @@ func ensureTopics(broker string, topicParams []KafkaReadTopicsParams) {
 
 	results, err := adminClient.CreateTopics(ctx, topicSpecifications)
 	if err != nil {
-		log.Fatalf("Erro ao criar tópicos: %v", err)
+		log.Printf("Erro ao criar tópicos: %v", err)
 	}
 
 	// Log o status da criação
@@ -102,13 +102,13 @@ func readTopics(topicParams []KafkaReadTopicsParams) {
 		"reconnect.backoff.max.ms": 1000,
 	})
 	if err != nil {
-		log.Fatalf("Erro ao criar o consumidor: %v", err)
+		log.Printf("Erro ao criar o consumidor: %v", err)
 	}
 	defer consumer.Close()
 
 	err = consumer.SubscribeTopics(topics, nil)
 	if err != nil {
-		log.Fatalf("Erro ao subscrever-se aos tópicos: %v", err)
+		log.Printf("Erro ao subscrever-se aos tópicos: %v", err)
 	}
 
 	log.Println("Consumidor iniciado. Aguardando mensagens...")
