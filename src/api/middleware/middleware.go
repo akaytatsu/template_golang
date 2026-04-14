@@ -43,9 +43,16 @@ func AuthenticatedMiddleware(usercase usecase_user.IUsecaseUser) gin.HandlerFunc
 func AdminMiddleware(usercase usecase_user.IUsecaseUser) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// get bearer token from header
-		token := c.Request.Header.Get("Authorization")
+		bearerToken := c.Request.Header.Get("Authorization")
 
-		// token := strings.Split(bearerToken, " ")[1]
+		if len(strings.Split(bearerToken, " ")) != 2 {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"message": "Not Authenticated",
+			})
+			c.Abort()
+		}
+
+		token := strings.Split(bearerToken, " ")[1]
 
 		user, err := usercase.GetUserByToken(token)
 

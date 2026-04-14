@@ -11,7 +11,7 @@ cmd = "go build -tags musl -o ./tmp/main ."
 bin = "tmp/main"
 
 # Usar eventos do filesystem em vez de polling
-poll = false
+poll = true
 
 # Customize binary - sem debug por padrão para performance
 full_bin = "./tmp/main"
