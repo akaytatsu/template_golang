@@ -2,7 +2,7 @@ package usecase_user
 
 import "app/entity"
 
-//go:generate mockgen -destination=../../mocks/mock_usecase_repository_user.go -package=mocks app/usecase/user IRepositoryUser
+//go:generate mockgen -source=usecase_user_interface.go -destination=../../mocks/mock_usecase_repository_user.go -package=mocks IRepositoryUser
 type IRepositoryUser interface {
 	GetByID(id int) (user *entity.EntityUser, err error)
 	GetByMail(email string) (user *entity.EntityUser, err error)
@@ -14,7 +14,7 @@ type IRepositoryUser interface {
 	GetUser(id int) (user *entity.EntityUser, err error)
 }
 
-//go:generate mockgen -destination=../../mocks/mock_usecase_user.go -package=mocks app/usecase/user IUsecaseUser
+//go:generate mockgen -source=usecase_user_interface.go -destination=../../mocks/mock_usecase_user.go -package=mocks IUsecaseUser
 type IUsecaseUser interface {
 	LoginUser(email string, password string) (*entity.EntityUser, error)
 	Create(user *entity.EntityUser) error

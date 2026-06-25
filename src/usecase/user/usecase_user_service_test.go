@@ -7,7 +7,7 @@ import (
 
 	usecase_user "app/usecase/user"
 
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )

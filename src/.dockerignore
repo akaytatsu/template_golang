@@ -28,3 +28,15 @@ Thumbs.db
 
 # Go specific
 vendor/
+
+# Generated reports and caches
+coverage.html
+coverage.out
+trivy-report.json
+
+# Workspace files
+go.work
+go.work.sum
+
+# Air config (not needed in build)
+.air.toml
