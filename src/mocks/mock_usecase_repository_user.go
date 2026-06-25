@@ -8,7 +8,7 @@ import (
 	entity "app/entity"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockIRepositoryUser is a mock of IRepositoryUser interface.

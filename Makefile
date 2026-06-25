@@ -20,9 +20,9 @@ show_env:
 
 install_deps:
 	@echo "Installing dependencies..."
-	go install mvdan.cc/gofumpt@latest
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	go install github.com/air-verse/air@latest
+	go install mvdan.cc/gofumpt@v0.10.0
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+	go install github.com/air-verse/air@v1.65.3
 
 _cp_env_file:
 	@cp -f src/.env.sample .env
@@ -100,12 +100,16 @@ test: show_env
 mod_tidy: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app go mod tidy
 
+update-deps: mod_tidy
+	cd src && go get -u ./...
+
 coverage: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app go test -v -coverprofile=coverage.out ./...
-	# docker-compose ${DOCKER_COMPOSE_FILE} exec app go tool cover -func=coverage.out
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app go tool cover -html=coverage.out -o coverage.html
-	xdg-open http://localhost:9070/coverage.html
-	cd src && php -S 0:9070
+	@echo "Coverage report generated: coverage.html"
+
+vulncheck: show_env
+	docker-compose ${DOCKER_COMPOSE_FILE} exec app govulncheck ./...
 
 swagger: show_env
 	docker-compose ${DOCKER_COMPOSE_FILE} exec app swag init
@@ -141,6 +145,21 @@ security-scan:
 		--exit-code 0 \
 		--severity HIGH,CRITICAL,MEDIUM \
 		/project
+
+security-scan-blocking:
+	@echo "Executando varredura de vulnerabilidades (bloqueante)..."
+	docker run --rm -v $(PWD):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
+		--scanners vuln,misconfig,secret \
+		--exit-code 1 \
+		--severity HIGH,CRITICAL \
+		/project
+
+security-scan-image:
+	@echo "Executando varredura na imagem Docker..."
+	docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) image \
+		--severity HIGH,CRITICAL \
+		--exit-code 1 \
+		$(IMAGE_NAME)
 
 security-scan-json:
 	@echo "Executando varredura de vulnerabilidades (saída JSON)..."

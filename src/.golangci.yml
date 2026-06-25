@@ -2,33 +2,17 @@ version: "2"
 linters:
   enable:
     - bodyclose
-    # - exhaustive
-    # - goconst
-    # - godot
-    # - godox
-    # - gomoddirectives
+    - gocritic
     - goprintffuncname
-    # - gosec
+    - gosec
     - misspell
-    # - nakedret
-    # - nestif
-    # - nilerr
     - noctx
     - nolintlint
-    # - prealloc
-    # - revive
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
     - tparallel
-    # - unconvert
-    # - unparam
     - whitespace
-    # - wrapcheck
-  disable:
-    - errcheck
-    - ineffassign
-    - unused
   exclusions:
     generated: lax
     presets:
