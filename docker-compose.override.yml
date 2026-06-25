@@ -68,7 +68,7 @@ services:
       kafka:
         condition: service_healthy
   db:
-    image: postgres:17-bookworm
+    image: postgres:16-bookworm
     env_file: ./src/.env
     ports:
       - 5432:5432
