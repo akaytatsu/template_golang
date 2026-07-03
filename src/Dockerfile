@@ -1,12 +1,14 @@
 # ============================================================================
 # STAGE 1: Builder
 # ============================================================================
-FROM golang:1.25.5-bookworm AS builder
+# syntax=docker/dockerfile:1
+FROM golang:1.26.4-bookworm AS builder
 
 # Environment variables for build
 ENV CGO_ENABLED=1 \
     GOOS=linux \
     GO111MODULE=on \
+    GOWORK=off \
     GOPROXY=https://proxy.golang.org,direct
 
 # Install build dependencies only (no cache to reduce layer size)
@@ -29,17 +31,20 @@ WORKDIR /build
 
 # Copy dependency files first for better layer caching
 COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download && go mod verify
 
 # Copy source code
 COPY . .
 
 # Install swag and generate Swagger documentation
-RUN go install github.com/swaggo/swag/cmd/swag@latest && \
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.6 && \
     /go/bin/swag init
 
 # Build the application with security flags
-RUN go build -ldflags="-w -s \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -ldflags="-w -s \
     -linkmode external \
     -extldflags '-static -Wl,-z,relro,-z,now'" \
     -a -installsuffix cgo \
@@ -74,6 +79,10 @@ COPY --from=builder --chown=nonroot:nonroot /tmp /tmp
 
 # Expose application port
 EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["/app/app_bin", "-healthcheck"] || exit 1
 
 # Use ENTRYPOINT for fixed command, CMD for default arguments
 ENTRYPOINT ["/app/app_bin"]

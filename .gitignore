@@ -38,4 +38,10 @@ web-bundles/
 .crush.json
 crush.json
 
+# Generated reports
+trivy-report.json
+coverage.out
+*.local.json
+go.work.sum
+
 # End of https://www.toptal.com/developers/gitignore/api/go

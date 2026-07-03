@@ -1,13 +1,18 @@
 package cron
 
 import (
+	"log"
 	"time"
 
-	"github.com/go-co-op/gocron"
+	gocron "github.com/go-co-op/gocron/v2"
 )
 
 func StartCronJobs() {
-	s := gocron.NewScheduler(time.UTC)
+	s, err := gocron.NewScheduler(gocron.WithLocation(time.UTC))
+	if err != nil {
+		log.Printf("Error creating gocron scheduler: %v", err)
+		return
+	}
 
-	s.StartAsync()
+	s.Start()
 }
