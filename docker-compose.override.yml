@@ -20,9 +20,11 @@ services:
       - ENV=dev
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
+      mail:
+        condition: service_healthy
   zookeeper:
     image: confluentinc/cp-zookeeper:7.9.1
     environment:
@@ -78,7 +80,17 @@ services:
       - ./src:/app
       - ./database:/db
       - ./.docker/postgres:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   mail:
     image: mailhog/mailhog:v1.0.1
     ports:
       - 8025:8025
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8025/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
