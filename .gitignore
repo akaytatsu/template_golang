@@ -38,6 +38,13 @@ web-bundles/
 .crush.json
 crush.json
 
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
 # Generated reports
 trivy-report.json
 coverage.out

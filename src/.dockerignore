@@ -21,6 +21,19 @@ README*
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# Git ignore files
+crush.json
+.crush.json
+.bmad-core/
+.crush/
+.gemini/
+web-bundles/
 
 # OS
 .DS_Store

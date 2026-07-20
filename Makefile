@@ -22,7 +22,7 @@ install_deps:
 	@echo "Installing dependencies..."
 	go install mvdan.cc/gofumpt@v0.10.0
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
-	go install github.com/air-verse/air@v1.65.3
+	go install github.com/air-verse/air@v1.67.1
 
 _cp_env_file:
 	@cp -f src/.env.sample .env

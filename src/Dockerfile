@@ -2,7 +2,7 @@
 # STAGE 1: Builder
 # ============================================================================
 # syntax=docker/dockerfile:1
-FROM golang:1.26.4-bookworm AS builder
+FROM golang:1.26.5-bookworm AS builder
 
 # Environment variables for build
 ENV CGO_ENABLED=1 \
