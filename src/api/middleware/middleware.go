@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"app/entity"
 	"net/http"
 	"strings"
 
@@ -9,72 +10,88 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ContextUserKey é a chave sob a qual os middlewares guardam o usuário
+// autenticado no contexto do Gin.
+const ContextUserKey = "user"
+
+// CurrentUser recupera o usuário autenticado colocado no contexto pelos
+// middlewares. ok=false quando a rota não passou por um deles.
+func CurrentUser(c *gin.Context) (entity.EntityUser, bool) {
+	value, exists := c.Get(ContextUserKey)
+	if !exists {
+		return entity.EntityUser{}, false
+	}
+
+	user, ok := value.(entity.EntityUser)
+
+	return user, ok
+}
+
+// bearerToken extrai o token de um header Authorization no formato
+// "Bearer <token>". Retorna ok=false para header ausente, esquema diferente de
+// Bearer ou token vazio.
+func bearerToken(c *gin.Context) (string, bool) {
+	scheme, token, found := strings.Cut(c.GetHeader("Authorization"), " ")
+	if !found {
+		return "", false
+	}
+
+	if !strings.EqualFold(strings.TrimSpace(scheme), "bearer") {
+		return "", false
+	}
+
+	token = strings.TrimSpace(token)
+
+	return token, token != ""
+}
+
+// authenticate resolve o usuário do header Authorization. Em qualquer falha
+// responde 401 e aborta, com retorno nil.
+func authenticate(c *gin.Context, usecase usecase_user.IUsecaseUser, message string) *entity.EntityUser {
+	token, ok := bearerToken(c)
+	if !ok {
+		abortUnauthorized(c, message)
+		return nil
+	}
+
+	user, err := usecase.GetUserByToken(token)
+	if err != nil || user == nil {
+		abortUnauthorized(c, "Unauthorized")
+		return nil
+	}
+
+	return user
+}
+
+func abortUnauthorized(c *gin.Context, message string) {
+	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": message})
+}
+
 func AuthenticatedMiddleware(usercase usecase_user.IUsecaseUser) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// get bearer token from header
-		bearerToken := c.Request.Header.Get("Authorization")
-
-		if len(strings.Split(bearerToken, " ")) != 2 {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Unauthorized",
-			})
-			c.Abort()
+		user := authenticate(c, usercase, "Unauthorized")
+		if user == nil {
+			return
 		}
 
-		token := strings.Split(bearerToken, " ")[1]
-
-		user, err := usercase.GetUserByToken(token)
-
-		// check if token is valid
-		if err == nil {
-			// set user to context
-			c.Set("user", *user)
-
-			c.Next()
-		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Unauthorized",
-			})
-			c.Abort()
-		}
+		c.Set(ContextUserKey, *user)
+		c.Next()
 	}
 }
 
 func AdminMiddleware(usercase usecase_user.IUsecaseUser) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// get bearer token from header
-		bearerToken := c.Request.Header.Get("Authorization")
-
-		if len(strings.Split(bearerToken, " ")) != 2 {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Not Authenticated",
-			})
-			c.Abort()
+		user := authenticate(c, usercase, "Not Authenticated")
+		if user == nil {
+			return
 		}
 
-		token := strings.Split(bearerToken, " ")[1]
-
-		user, err := usercase.GetUserByToken(token)
-
-		// check if token is valid
-		if err == nil {
-			if !user.IsAdmin {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"message": "Unauthorized",
-				})
-				c.Abort()
-				return
-			}
-
-			// set user to context
-			c.Set("user", *user)
-
-			c.Next()
-		} else {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Unauthorized",
-			})
-			c.Abort()
+		if !user.IsAdmin {
+			abortUnauthorized(c, "Unauthorized")
+			return
 		}
+
+		c.Set(ContextUserKey, *user)
+		c.Next()
 	}
 }

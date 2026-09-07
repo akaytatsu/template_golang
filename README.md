@@ -14,7 +14,7 @@ O projeto segue os princípios da **Clean Architecture** com separação clara d
 
 ## Stack Tecnológico
 
-- **Linguagem**: Go 1.21+
+- **Linguagem**: Go 1.27+
 - **Framework Web**: Gin
 - **Banco de Dados**: PostgreSQL com GORM
 - **Mensageria**: Apache Kafka
@@ -28,7 +28,7 @@ O projeto segue os princípios da **Clean Architecture** com separação clara d
 
 Antes de começar, certifique-se de ter instalado:
 
-- [Go 1.21+](https://golang.org/dl/)
+- [Go 1.27+](https://golang.org/dl/)
 - [Docker](https://www.docker.com/get-started)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Make](https://www.gnu.org/software/make/) (opcional, mas recomendado)
@@ -319,7 +319,7 @@ GORM_LOG_LEVEL=ERROR
 
 # Configurações de segurança
 JWT_SECRET_KEY=sua-chave-secreta-super-forte
-ISRELEASE=true
+IS_RELEASE=true
 
 # Configurações de banco específicas
 POSTGRES_HOST=seu-host-producao

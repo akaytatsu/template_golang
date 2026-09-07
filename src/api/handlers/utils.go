@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"app/api/middleware"
+	"app/entity"
 	"app/infrastructure/repository"
+	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -10,7 +13,14 @@ import (
 	usecase_user "app/usecase/user"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+)
+
+const (
+	defaultPageSize = 10
+	maxPageSize     = 100
 )
 
 type PaginationResponse struct {
@@ -21,16 +31,74 @@ type PaginationResponse struct {
 	Registers      any `json:"registers"`
 }
 
-func handleError(c *gin.Context, err error) bool {
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return true
+// httpStatusFor traduz um erro de domínio no status HTTP adequado.
+// Antes tudo virava 500, o que escondia erro de payload, credencial inválida e
+// registro inexistente atrás do mesmo código.
+func httpStatusFor(err error) int {
+	var validationErrors validator.ValidationErrors
+
+	switch {
+	case errors.As(err, &validationErrors):
+		return http.StatusBadRequest
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
+		return http.StatusUnauthorized
+	case errors.Is(err, entity.ErrInvalidToken), errors.Is(err, entity.ErrInvalidClaims):
+		return http.StatusUnauthorized
+	default:
+		return http.StatusInternalServerError
 	}
-	return false
+}
+
+func handleError(c *gin.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	status := httpStatusFor(err)
+	body := gin.H{"error": err.Error()}
+
+	// Em erro de validação, devolve também o detalhe por campo.
+	if fields := entity.GetStructError(err); len(fields) > 0 {
+		body["fields"] = fields
+	}
+
+	c.AbortWithStatusJSON(status, body)
+
+	return true
+}
+
+// handleBindError responde 400 para payload malformado.
+func handleBindError(c *gin.Context, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+
+	return true
 }
 
 func jsonResponse(c *gin.Context, httpStatus int, data any) {
 	c.JSON(httpStatus, data)
+}
+
+// pathID lê o path param `id`. Antes cada handler fazia strconv.Atoi
+// descartando o erro, então um id não numérico virava 0 silenciosamente.
+func pathID(c *gin.Context) (int, error) {
+	raw := c.Param("id")
+
+	id, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("id inválido: %q", raw)
+	}
+
+	if id <= 0 {
+		return 0, fmt.Errorf("id inválido: %q", raw)
+	}
+
+	return id, nil
 }
 
 func RoutersHandler(c *gin.Context, r *gin.Engine) {
@@ -49,7 +117,7 @@ func RoutersHandler(c *gin.Context, r *gin.Engine) {
 	}
 
 	if gin.Mode() == gin.DebugMode {
-		c.JSON(200, routers)
+		c.JSON(http.StatusOK, routers)
 	}
 }
 
@@ -69,29 +137,38 @@ func SetAdminMiddleware(conn *gorm.DB, group *gin.RouterGroup) {
 	group.Use(middleware.AdminMiddleware(usecaseUser))
 }
 
-func getPaginationParams(c *gin.Context) (int, int) {
-	page := 0
-	pageSize := 10
+// GetPaginationParams lê `page` e `page_size` da query string, aplicando os
+// limites padrão.
+func GetPaginationParams(c *gin.Context) (page, pageSize int) {
+	page = 0
+	pageSize = defaultPageSize
 
 	if c.Query("page") != "" {
 		page, _ = strconv.Atoi(c.Query("page"))
+		if page < 0 {
+			page = 0
+		}
 	}
+
 	if c.Query("page_size") != "" {
 		pageSize, _ = strconv.Atoi(c.Query("page_size"))
 		if pageSize < 1 {
-			pageSize = 10
+			pageSize = defaultPageSize
 		}
 
-		if pageSize > 100 {
-			pageSize = 100
+		if pageSize > maxPageSize {
+			pageSize = maxPageSize
 		}
 	}
+
 	return page, pageSize
 }
 
-func getOrderAndSortByParams(c *gin.Context, defaultOrder string, defaultSort string) (string, string) {
-	orderBy := c.Query("order_by")
-	sortOrder := c.Query("sort_order")
+// GetOrderAndSortByParams lê `order_by` e `sort_order` da query string,
+// caindo nos valores padrão quando ausentes.
+func GetOrderAndSortByParams(c *gin.Context, defaultOrder string, defaultSort string) (orderBy, sortOrder string) {
+	orderBy = c.Query("order_by")
+	sortOrder = c.Query("sort_order")
 
 	if orderBy == "" {
 		orderBy = defaultOrder
@@ -104,10 +181,16 @@ func getOrderAndSortByParams(c *gin.Context, defaultOrder string, defaultSort st
 	return orderBy, sortOrder
 }
 
-func getOrderByParams(c *gin.Context, defaultValue string) (string, string) {
-	return getOrderAndSortByParams(c, defaultValue, "asc")
+// GetOrderByParams é o GetOrderAndSortByParams com ordenação ascendente.
+func GetOrderByParams(c *gin.Context, defaultValue string) (orderBy, sortOrder string) {
+	return GetOrderAndSortByParams(c, defaultValue, "asc")
 }
 
-func getTotalPaginas(totalRegistros int64, tamanhoPagina int) int {
-	return int(math.Ceil(float64(totalRegistros) / float64(tamanhoPagina)))
+// GetTotalPages calcula o número de páginas para um total de registros.
+func GetTotalPages(totalRegisters int64, pageSize int) int {
+	if pageSize <= 0 {
+		return 0
+	}
+
+	return int(math.Ceil(float64(totalRegisters) / float64(pageSize)))
 }

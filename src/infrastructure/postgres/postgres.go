@@ -21,10 +21,10 @@ func Connect() *gorm.DB {
 	return gormDB
 }
 
-func Migrations() {
+func Migrations() error {
 	db := Connect()
 
-	db.AutoMigrate(&entity.EntityUser{})
+	return db.AutoMigrate(&entity.EntityUser{})
 }
 
 func conn() *gorm.DB {

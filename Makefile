@@ -1,184 +1,229 @@
-SHELL:=/bin/bash
+SHELL := /bin/bash
 ARGS = $(filter-out $@,$(MAKECMDGOALS))
 MAKEFLAGS += --silent
-BASE_PATH=${PWD}
-DOCKER_COMPOSE_FILE=$(shell echo -f docker-compose.yml -f docker-compose.override.yml)
 
-include src/.env
-export $(shell sed 's/=.*//' src/.env)
+.DEFAULT_GOAL := help
 
-show_env:
-	# Show wich DOCKER_COMPOSE_FILE and ENV the recipes will user
-	# It should be referenced by all other recipes you want it to show.
-	# It's only printed once even when more than a recipe executed uses it
-	sh -c "if [ \"${ENV_PRINTED:-0}\" != \"1\" ]; \
-	then \
-		echo DOCKER_COMPOSE_FILE = \"${DOCKER_COMPOSE_FILE}\"; \
-		echo OSFLAG = \"${OSFLAG}\"; \
-	fi; \
-	ENV_PRINTED=1;"
+# ============================================================================
+# Configuração
+# ============================================================================
+BASE_PATH := $(PWD)
+ENV_FILE := src/.env
+ENV_SAMPLE := src/.env.sample
 
-install_deps:
-	@echo "Installing dependencies..."
-	go install mvdan.cc/gofumpt@v0.10.0
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
-	go install github.com/air-verse/air@v1.67.1
+# Compose v2 (plugin do Docker). O binário `docker-compose` v1 está EOL.
+DOCKER_COMPOSE ?= docker compose
+COMPOSE := $(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.override.yml
+COMPOSE_PROD := $(DOCKER_COMPOSE) -f docker-compose.yml
 
-_cp_env_file:
-	@cp -f src/.env.sample .env
+# Nome base das imagens. Os compose files acrescentam :dev e :prod.
+IMAGE_NAME ?= $(notdir $(BASE_PATH))-app
+# Tag varrida pelo `security-scan-image` — a de produção, que é a que é publicada.
+SCAN_IMAGE ?= $(IMAGE_NAME):prod
 
+# `-include` (e não `include`): o .env é gitignored, então num clone limpo ele
+# não existe. Com `include` o make aborta em qualquer target.
+-include $(ENV_FILE)
+export
+
+# ============================================================================
+# Ajuda
+# ============================================================================
+help: ## Lista os targets disponíveis
+	@echo "Uso: make <target> [ARGS]"
+	@echo ""
+	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+		| sort \
+		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "Targets marcados com [container] exigem 'make up' antes."
+
+# ============================================================================
+# Ambiente
+# ============================================================================
 _ensure_env:
-	@if [ ! -f .env ]; then \
-		echo "Arquivo .env não encontrado. Copiando de src/.env.sample..."; \
-		cp src/.env.sample .env; \
-		echo "Arquivo .env criado com sucesso."; \
+	@if [ ! -f $(ENV_FILE) ]; then \
+		echo "Arquivo $(ENV_FILE) não encontrado. Copiando de $(ENV_SAMPLE)..."; \
+		cp $(ENV_SAMPLE) $(ENV_FILE); \
+		echo "Arquivo $(ENV_FILE) criado com sucesso."; \
 	fi
 
-init: _cp_env_file
-	cd ./src
-	go install golang.org/x/tools/gopls@latest
+init: _ensure_env ## Prepara o projeto (cria src/.env e instala o gopls)
+	go install golang.org/x/tools/gopls@v0.23.0
 
-_rebuild: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} down
-	docker-compose ${DOCKER_COMPOSE_FILE} build --no-cache --force-rm
+install_deps: ## Instala as ferramentas de lint/format/hot-reload no host
+	@echo "Installing dependencies..."
+	go install mvdan.cc/gofumpt@v0.11.0
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+	go install github.com/air-verse/air@v1.67.4
 
-up: show_env _ensure_env
-	docker-compose ${DOCKER_COMPOSE_FILE} up -d --remove-orphans
+# ============================================================================
+# Ciclo de vida dos containers
+# ============================================================================
+up: _ensure_env ## Sobe todos os serviços
+	$(COMPOSE) up -d --remove-orphans
 
-logf: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} logs -f --tail 200 app
+up-prod: _ensure_env ## Sobe apenas o serviço de app com o Dockerfile de produção
+	$(COMPOSE_PROD) up -d --remove-orphans
 
-log: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} logs --tail 200 app
+stop: ## Para os serviços
+	$(COMPOSE) stop
 
-logs: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} logs -f --tail 200
+down: ## Para e remove os containers
+	$(COMPOSE) down
 
-stop: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} stop
+restart: ## Reinicia os serviços
+	$(COMPOSE) restart
 
-status: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} ps
+status: ## Mostra o estado dos serviços
+	$(COMPOSE) ps
 
-restart: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} restart
+_rebuild: ## Recria as imagens do zero
+	$(COMPOSE) down
+	$(COMPOSE) build --no-cache --force-rm
 
-sh: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec ${ARGS} bash
+sh: ## [container] Abre um shell no serviço (ex.: make sh app)
+	$(COMPOSE) exec $(ARGS) bash
 
-run: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} run ${ARGS}
+run: ## Roda um comando one-off num serviço (ex.: make run app go version)
+	$(COMPOSE) run --rm $(ARGS)
 
-chown_project:
-	sudo chown -R "${USER}:${USER}" ./
+# ============================================================================
+# Logs
+# ============================================================================
+log: ## Últimas 200 linhas de log do app
+	$(COMPOSE) logs --tail 200 app
 
-dep_install: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app go get ${ARGS}
-	cd src && go get ${ARGS}
+logf: ## Segue o log do app
+	$(COMPOSE) logs -f --tail 200 app
 
-auto_install: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app go get ./...
+logs: ## Segue o log de todos os serviços
+	$(COMPOSE) logs -f --tail 200
+
+logger: ## Segue o log de um serviço específico (ex.: make logger kafka)
+	$(COMPOSE) logs -f --tail 200 $(ARGS)
+
+# ============================================================================
+# Dependências Go
+# ============================================================================
+dep_install: ## [container] Adiciona uma dependência (ex.: make dep_install github.com/foo/bar)
+	$(COMPOSE) exec app go get $(ARGS)
+	cd src && go get $(ARGS)
+
+auto_install: ## [container] Resolve as dependências faltantes
+	$(COMPOSE) exec app go get ./...
 	cd src && go get ./...
 
-generate: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app go generate ./...
-	sudo chown -R "${USER}:${USER}" ./
+mod_tidy: ## [container] Roda go mod tidy
+	$(COMPOSE) exec app go mod tidy
 
-logger: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} logs -f --tail 200 ${ARGS}
+update-deps: ## Atualiza todas as dependências e roda tidy
+	cd src && go get -u ./... && go mod tidy
 
-test-watch: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app gotestsum --watch
+generate: ## Regenera os mocks (go:generate)
+	cd src && go generate ./...
 
-test-watch-web: show_env
-	go install github.com/smartystreets/goconvey@latest
+# ============================================================================
+# Testes
+# ============================================================================
+test: ## [container] Roda todos os testes
+	$(COMPOSE) exec app gotestsum
+
+test-watch: ## [container] Roda os testes em modo watch
+	$(COMPOSE) exec app gotestsum --watch
+
+test-watch-web: ## Sobe a UI do GoConvey em :9090
+	go install github.com/smartystreets/goconvey@v1.8.1
 	cd src && goconvey -port 9090 -cover
 
-test: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app gotestsum
+coverage: ## [container] Gera o relatório de cobertura
+	$(COMPOSE) exec app go test -coverprofile=coverage.out ./...
+	$(COMPOSE) exec app go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: src/coverage.html"
 
-mod_tidy: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app go mod tidy
-
-update-deps: mod_tidy
-	cd src && go get -u ./...
-
-coverage: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app go test -v -coverprofile=coverage.out ./...
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
-
-vulncheck: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app govulncheck ./...
-
-swagger: show_env
-	docker-compose ${DOCKER_COMPOSE_FILE} exec app swag init
-
-install_generator:
-	npm install -g generator-go-clean-architecture-crud
-
-update_generator:
-	npm update -g generator-go-clean-architecture-crud
-
-generator_crud:
-	yo go-clean-architecture-crud
-
-lint-validate:
-	cd src/ && golangci-lint run --path-mode=abs --config=".golangci.yml" --timeout=5m
-
-lint-fix:
-	cd src/ && golangci-lint run --path-mode=abs --config=".golangci.yml" --timeout=5m --fix
-
-fmt:
+# ============================================================================
+# Qualidade de código
+# ============================================================================
+fmt: ## Formata o código com gofumpt
 	gofumpt -w ./src
 
-lint: fmt lint-fix lint-validate
+lint-validate: ## Roda o golangci-lint em modo validação
+	cd src/ && golangci-lint run --path-mode=abs --config=".golangci.yml" --timeout=5m
+
+lint-fix: ## Roda o golangci-lint aplicando as correções automáticas
+	cd src/ && golangci-lint run --path-mode=abs --config=".golangci.yml" --timeout=5m --fix
+
+lint: fmt lint-fix lint-validate ## Formata, corrige e valida
 	@echo "Linting completed successfully."
 
-# Trivy - Security Scanner (Docker)
+# ============================================================================
+# Docs
+# ============================================================================
+swagger: ## [container] Regenera a documentação Swagger
+	$(COMPOSE) exec app swag init
+
+# ============================================================================
+# Utilitários
+# ============================================================================
+chown_project: ## Devolve a posse dos arquivos ao usuário atual
+	sudo chown -R "$(shell id -u):$(shell id -g)" ./
+
+install_generator: ## Instala o gerador de CRUD
+	npm install -g generator-go-clean-architecture-crud
+
+update_generator: ## Atualiza o gerador de CRUD
+	npm update -g generator-go-clean-architecture-crud
+
+generator_crud: ## Roda o gerador de CRUD
+	yo go-clean-architecture-crud
+
+# ============================================================================
+# Segurança
+# ============================================================================
 TRIVY_IMAGE ?= aquasec/trivy:latest
+TRIVY_FS = docker run --rm -v $(BASE_PATH):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
+	--scanners vuln,misconfig,secret
 
-security-scan:
+vulncheck: ## [container] Checa vulnerabilidades nas dependências Go
+	$(COMPOSE) exec app govulncheck ./...
+
+security-scan: ## Varredura de vulnerabilidades (não bloqueante)
 	@echo "Executando varredura de vulnerabilidades na pasta . (Trivy Docker)..."
-	docker run --rm -v $(PWD):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
-		--scanners vuln,misconfig,secret \
-		--exit-code 0 \
-		--severity HIGH,CRITICAL,MEDIUM \
-		/project
+	$(TRIVY_FS) --exit-code 0 --severity HIGH,CRITICAL,MEDIUM /project
 
-security-scan-blocking:
+security-scan-blocking: ## Varredura bloqueante (exit 1 em HIGH/CRITICAL)
 	@echo "Executando varredura de vulnerabilidades (bloqueante)..."
-	docker run --rm -v $(PWD):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
-		--scanners vuln,misconfig,secret \
-		--exit-code 1 \
-		--severity HIGH,CRITICAL \
-		/project
+	$(TRIVY_FS) --exit-code 1 --severity HIGH,CRITICAL /project
 
-security-scan-image:
-	@echo "Executando varredura na imagem Docker..."
+security-scan-json: ## Varredura com saída em JSON
+	@echo "Executando varredura de vulnerabilidades (saída JSON)..."
+	$(TRIVY_FS) --exit-code 0 --severity HIGH,CRITICAL,MEDIUM \
+		--format json -o /project/trivy-report.json /project
+
+security-scan-table: ## Varredura com saída em tabela
+	@echo "Executando varredura de vulnerabilidades (formato tabela)..."
+	$(TRIVY_FS) --exit-code 0 --format table /project
+
+security-scan-image: ## Varredura na imagem de produção (SCAN_IMAGE=...)
+	@echo "Executando varredura na imagem $(SCAN_IMAGE)..."
 	docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) image \
 		--severity HIGH,CRITICAL \
 		--exit-code 1 \
-		$(IMAGE_NAME)
+		$(SCAN_IMAGE)
 
-security-scan-json:
-	@echo "Executando varredura de vulnerabilidades (saída JSON)..."
-	docker run --rm -v $(PWD):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
-		--scanners vuln,misconfig,secret \
-		--exit-code 0 \
-		--severity HIGH,CRITICAL,MEDIUM \
-		--format json \
-		-o /project/trivy-report.json \
-		/project
-
-security-scan-table:
-	@echo "Executando varredura de vulnerabilidades (formato tabela)..."
-	docker run --rm -v $(PWD):/project -v trivy-cache:/root/.cache/trivy $(TRIVY_IMAGE) fs \
-		--scanners vuln,misconfig,secret \
-		--exit-code 0 \
-		--format table \
-		/project
-
-clean-trivy-cache:
+clean-trivy-cache: ## Limpa o cache do Trivy
 	@echo "Limpando cache do Trivy..."
 	docker volume rm -f trivy-cache
+
+.PHONY: help init install_deps _ensure_env up up-prod stop down restart status \
+	_rebuild sh run log logf logs logger dep_install auto_install mod_tidy \
+	update-deps generate test test-watch test-watch-web coverage fmt \
+	lint-validate lint-fix lint swagger chown_project install_generator \
+	update_generator generator_crud vulncheck security-scan \
+	security-scan-blocking security-scan-json security-scan-table \
+	security-scan-image clean-trivy-cache
+
+# Catch-all: permite `make sh app` sem que o make tente construir o target "app".
+# Precisa vir por último.
+%:
+	@:

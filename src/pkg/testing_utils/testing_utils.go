@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Contains[T string | int](elems []T, item T) bool {
@@ -96,7 +97,9 @@ func (r *TestRequest) GetJsonResponse() map[string]any {
 		r.Execute()
 	}
 	var jsonResponse map[string]any
-	json.Unmarshal(r.Response.Body.Bytes(), &jsonResponse)
+	if err := json.Unmarshal(r.Response.Body.Bytes(), &jsonResponse); err != nil {
+		require.NoError(r.T, err, "resposta não é um JSON válido: %s", r.Response.Body.String())
+	}
 	return jsonResponse
 }
 

@@ -1,8 +1,13 @@
-volumes:
-  data:
-
+# Serviço de aplicação com a imagem de produção (distroless).
+# Os serviços de apoio (db, kafka, mail) vivem no docker-compose.override.yml,
+# que o `make up` aplica em cima deste arquivo. Para subir só o app com a
+# imagem de produção, use `make up-prod`.
 services:
   app:
+    # Tag explícita: sem ela, prod e dev derivariam o mesmo nome de imagem do
+    # par projeto+serviço e o último build sobrescreveria o outro (o que também
+    # deixava o `make security-scan-image` ambíguo).
+    image: ${IMAGE_NAME:-template_golang-app}:prod
     build:
       context: ./src
       dockerfile: ./Dockerfile
