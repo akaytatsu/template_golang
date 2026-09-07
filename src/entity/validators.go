@@ -1,6 +1,9 @@
 package entity
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -12,22 +15,33 @@ type IError struct {
 
 var validate *validator.Validate = validator.New()
 
-func GetStructError(err error) []IError {
-	var errors []IError
+// ValidateRawPassword valida uma senha em texto puro contra as mesmas regras
+// declaradas na tag `validate` de EntityUser.Password.
+//
+// A validação é feita antes do bcrypt: checar o hash (sempre 60 caracteres)
+// não diria nada sobre a senha que o usuário escolheu.
+func ValidateRawPassword(raw string) error {
+	return validate.Var(raw, "required,min=4,max=120")
+}
 
-	if err == nil {
-		return errors
+// GetStructError traduz um erro de validação numa lista de campos com problema.
+// Retorna nil para erros que não vêm do validator.
+func GetStructError(err error) []IError {
+	var validationErrors validator.ValidationErrors
+	if !errors.As(err, &validationErrors) {
+		return nil
 	}
 
-	// if _, ok := err.(*validator.InvalidValidationError); ok {
-	for _, err := range err.(validator.ValidationErrors) {
-		errors = append(errors, IError{
-			Field: err.Field(),
-			Tag:   err.Tag(),
-			Value: err.Value().(string),
+	fieldErrors := make([]IError, 0, len(validationErrors))
+	for _, fieldErr := range validationErrors {
+		fieldErrors = append(fieldErrors, IError{
+			Field: fieldErr.Field(),
+			Tag:   fieldErr.Tag(),
+			// %v e não uma type assertion: o campo pode não ser string
+			// (IsAdmin é bool, IDs é []uint).
+			Value: fmt.Sprintf("%v", fieldErr.Value()),
 		})
 	}
-	// }
 
-	return errors
+	return fieldErrors
 }

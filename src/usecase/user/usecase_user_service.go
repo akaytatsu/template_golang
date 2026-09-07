@@ -3,6 +3,8 @@ package usecase_user
 import (
 	"app/entity"
 	"errors"
+
+	"gorm.io/gorm"
 )
 
 type UseCaseUser struct {
@@ -36,7 +38,25 @@ func (u *UseCaseUser) Create(user *entity.EntityUser) error {
 	return u.repo.CreateUser(user)
 }
 
+// Update persiste o usuário. O repositório usa Save (grava todas as colunas),
+// então a senha precisa de tratamento explícito: vinda em texto puro no payload
+// ela seria gravada sem hash. Payload sem senha preserva o hash atual.
 func (u *UseCaseUser) Update(user *entity.EntityUser) error {
+	current, err := u.repo.GetByID(user.ID)
+	if err != nil {
+		return err
+	}
+
+	if current == nil {
+		return gorm.ErrRecordNotFound
+	}
+
+	if user.Password == "" {
+		user.Password = current.Password
+	} else if err := user.UpdatePassword(user.Password); err != nil {
+		return err
+	}
+
 	return u.repo.UpdateUser(user)
 }
 
@@ -73,23 +93,20 @@ func (u *UseCaseUser) UpdatePassword(id int, oldPassword, newPassword, confirmPa
 		return errors.New("passwords do not match")
 	}
 
-	user.UpdatePassword(newPassword)
-
-	err = user.GetValidated()
-	if err != nil {
+	// UpdatePassword já valida a senha em texto puro e aplica o bcrypt. Chamar
+	// GetValidated aqui hashearia o hash e a senha nova nunca autenticaria.
+	if err := user.UpdatePassword(newPassword); err != nil {
 		return err
 	}
 
-	err = u.repo.UpdateUser(user)
-
-	return err
+	return u.repo.UpdateUser(user)
 }
 
 func (u *UseCaseUser) GetUsersFromIDs(ids []int) (users []entity.EntityUser, err error) {
 	return u.repo.GetUsersFromIDs(ids)
 }
 
-func (u *UseCaseUser) GetUsers(filters entity.EntityUserFilters) (users []entity.EntityUser, err error) {
+func (u *UseCaseUser) GetUsers(filters entity.EntityUserFilters) (users []entity.EntityUser, total int64, err error) {
 	return u.repo.GetUsers(filters)
 }
 

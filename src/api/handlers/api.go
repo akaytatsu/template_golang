@@ -98,7 +98,7 @@ func MountSamplesHandlers(r *gin.Engine) {
 				method := route.Method
 
 				if len(method) < 7 {
-					method = method + strings.Repeat(" ", 7-len(method))
+					method += strings.Repeat(" ", 7-len(method))
 				}
 
 				response += method + " " + route.Path + "\n"

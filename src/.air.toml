@@ -1,4 +1,4 @@
-# Config file for [Air](https://github.com/cosmtrek/air) in TOML format
+# Config file for [Air](https://github.com/air-verse/air) in TOML format
 
 # Working directory
 # . or absolute path, please note that the directories following must be under root.
@@ -6,11 +6,17 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -tags musl -o ./tmp/main ."
+# Sem `-tags musl`: a imagem de dev é Debian/glibc, e a tag musl seleciona
+# librdkafka_musl_*.a, cujo link contra glibc falha em `strlcpy`/`sigsetjmp`.
+# Sem tags, o confluent-kafka-go usa a librdkafka estática glibc que ele já
+# vendora. (`-tags dynamic` também não serve: a librdkafka-dev do bookworm é
+# anterior à v2.15.0 exigida pelo driver.)
+cmd = "go build -o ./tmp/main ."
 # Binary file yields from `cmd`.
 bin = "tmp/main"
 
-# Usar eventos do filesystem em vez de polling
+# Polling em vez de eventos: bind mounts do Docker no macOS/Windows não
+# propagam eventos de inotify de forma confiável.
 poll = true
 
 # Customize binary - sem debug por padrão para performance

@@ -127,13 +127,25 @@ const docTemplate = `{
                         "description": "Active",
                         "name": "active",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page (0-indexed)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "page_size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "success",
                         "schema": {
-                            "$ref": "#/definitions/entity.EntityUser"
+                            "$ref": "#/definitions/handlers.PaginationResponse"
                         }
                     }
                 }
@@ -366,6 +378,24 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "handlers.PaginationResponse": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "registers": {},
+                "total_pages": {
+                    "type": "integer"
+                },
+                "total_registers": {
+                    "type": "integer"
                 }
             }
         }

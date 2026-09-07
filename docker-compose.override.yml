@@ -4,6 +4,7 @@ volumes:
 
 services:
   app:
+    image: ${IMAGE_NAME:-template_golang-app}:dev
     build:
       context: ./src
       dockerfile: ./Dockerfile-dev
@@ -16,6 +17,12 @@ services:
       - go-cache:/go/pkg/mod
     environment:
       - ENV=dev
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       db:
         condition: service_healthy
@@ -23,28 +30,26 @@ services:
         condition: service_healthy
       mail:
         condition: service_healthy
-  zookeeper:
-    image: confluentinc/cp-zookeeper:8.2.2
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+
+  # Kafka em modo KRaft (sem ZooKeeper). Os listeners são os mesmos de antes:
+  # PLAINTEXT (inter-broker) em 29092 e PLAINTEXT_HOST em 9092, que é o que
+  # KAFKA_BOOTSTRAP_SERVER=kafka:9092 da aplicação usa.
   kafka:
-    image: confluentinc/cp-kafka:8.2.2
-    depends_on:
-      zookeeper:
-        condition: service_healthy
+    image: confluentinc/cp-kafka:8.3.1
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     healthcheck:
       test:
         [
@@ -56,39 +61,48 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 30s
+
+  # provectuslabs/kafka-ui foi arquivado na v0.7.2; kafbat é o fork oficial.
   webkafka:
-    image: provectuslabs/kafka-ui:v0.7.2
+    image: ghcr.io/kafbat/kafka-ui:v1.0.0
     ports:
       - 9030:8080
     environment:
       - KAFKA_CLUSTERS_0_NAME=local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
-      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
       - KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL=PLAINTEXT
-      - KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM=PLAIN
+      - DYNAMIC_CONFIG_ENABLED=true
     depends_on:
       kafka:
         condition: service_healthy
+
   db:
-    image: postgres:16-bookworm
+    image: postgres:16-trixie
     env_file: ./src/.env
     ports:
       - 5432:5432
     volumes:
-      - ./src:/app
-      - ./database:/db
+      - data:/var/lib/postgresql/data
       - ./.docker/postgres:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # mailhog/mailhog está sem manutenção desde 2020; Mailpit é o substituto
+  # direto e usa as mesmas portas (1025 SMTP, 8025 UI).
   mail:
-    image: mailhog/mailhog:v1.1.0
+    image: axllent/mailpit:v1.31.1
     ports:
       - 8025:8025
+      - 1025:1025
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8025/"]
+      test: ["CMD", "/mailpit", "readyz"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -1,10 +1,10 @@
 package kafka
 
 import (
+	"app/config"
 	"context"
+	"errors"
 	"log"
-	"os"
-	"sync"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -16,6 +16,10 @@ var (
 	KafkaGroupID          string
 )
 
+// producer é criado uma vez no kafkaSetup e reusado por PublishMessage. Criar
+// um producer por mensagem custa handshake + fetch de metadata a cada envio.
+var producer *kafka.Producer
+
 type KafkaReadTopicsParams struct {
 	Topic   string
 	Handler func(m *kafka.Message) error
@@ -25,18 +29,43 @@ type KafkaReadTopicsParams struct {
 const (
 	NumPartitions     = 3
 	ReplicationFactor = -1
+
+	// readPollTimeout é o intervalo em que o consumer devolve o controle para
+	// que o cancelamento do context seja observado.
+	readPollTimeout = 500 * time.Millisecond
 )
 
 func kafkaSetup(topicParams []KafkaReadTopicsParams) {
-	// TopicParams = topicParams
+	KafkaBootstrapServers = config.EnvironmentVariables.KAFKA_BOOTSTRAP_SERVER
+	KafkaClientID = config.EnvironmentVariables.KAFKA_CLIENT_ID
+	KafkaGroupID = config.EnvironmentVariables.KAFKA_GROUP_ID
 
-	KafkaBootstrapServers = os.Getenv("KAFKA_BOOTSTRAP_SERVER")
-	KafkaClientID = os.Getenv("KAFKA_CLIENT_ID")
-	KafkaGroupID = os.Getenv("KAFKA_GROUP_ID")
+	if KafkaBootstrapServers == "" {
+		log.Println("KAFKA_BOOTSTRAP_SERVER não configurado, Kafka desabilitado")
+		return
+	}
 
 	ensureTopics(KafkaBootstrapServers, topicParams)
 
+	p, err := kafka.NewProducer(&kafka.ConfigMap{
+		"bootstrap.servers": KafkaBootstrapServers,
+		"client.id":         KafkaClientID,
+	})
+	if err != nil {
+		log.Printf("Erro ao criar o producer: %v", err)
+		return
+	}
+	producer = p
+
 	log.Println("Kafka configurado com sucesso")
+}
+
+// Close libera o producer compartilhado. Deve ser chamado no shutdown.
+func Close() {
+	if producer != nil {
+		producer.Close()
+		producer = nil
+	}
 }
 
 func ensureTopics(broker string, topicParams []KafkaReadTopicsParams) {
@@ -45,12 +74,14 @@ func ensureTopics(broker string, topicParams []KafkaReadTopicsParams) {
 
 	adminClient, err := kafka.NewAdminClient(&kafka.ConfigMap{"bootstrap.servers": broker})
 	if err != nil {
+		// Sem o return, o defer abaixo rodaria sobre um ponteiro nil.
 		log.Printf("Failed to create AdminClient: %s\n", err)
+		return
 	}
 	defer adminClient.Close()
 
 	// Criação dos tópicos
-	var topicSpecifications []kafka.TopicSpecification
+	topicSpecifications := make([]kafka.TopicSpecification, 0, len(topicParams))
 	for _, param := range topicParams {
 		topicSpecifications = append(topicSpecifications, kafka.TopicSpecification{
 			Topic:             param.Topic,
@@ -66,6 +97,7 @@ func ensureTopics(broker string, topicParams []KafkaReadTopicsParams) {
 	results, err := adminClient.CreateTopics(ctx, topicSpecifications)
 	if err != nil {
 		log.Printf("Erro ao criar tópicos: %v", err)
+		return
 	}
 
 	// Log o status da criação
@@ -81,7 +113,8 @@ func ensureTopics(broker string, topicParams []KafkaReadTopicsParams) {
 	}
 }
 
-func readTopics(topicParams []KafkaReadTopicsParams) {
+// readTopics consome os tópicos até o context ser cancelado.
+func readTopics(ctx context.Context, topicParams []KafkaReadTopicsParams) {
 	if len(topicParams) == 0 {
 		log.Println("Nenhum tópico para consumir")
 		return
@@ -95,6 +128,7 @@ func readTopics(topicParams []KafkaReadTopicsParams) {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":        KafkaBootstrapServers,
 		"group.id":                 KafkaGroupID,
+		"client.id":                KafkaClientID,
 		"auto.offset.reset":        "earliest",
 		"enable.auto.commit":       false,
 		"session.timeout.ms":       6000,
@@ -102,72 +136,80 @@ func readTopics(topicParams []KafkaReadTopicsParams) {
 		"reconnect.backoff.max.ms": 1000,
 	})
 	if err != nil {
+		// Sem o return, o defer abaixo rodaria sobre um ponteiro nil.
 		log.Printf("Erro ao criar o consumidor: %v", err)
+		return
 	}
-	defer consumer.Close()
+	defer func() {
+		if closeErr := consumer.Close(); closeErr != nil {
+			log.Printf("Erro ao fechar o consumidor: %v", closeErr)
+		}
+	}()
 
-	err = consumer.SubscribeTopics(topics, nil)
-	if err != nil {
+	if err := consumer.SubscribeTopics(topics, nil); err != nil {
 		log.Printf("Erro ao subscrever-se aos tópicos: %v", err)
+		return
 	}
 
 	log.Println("Consumidor iniciado. Aguardando mensagens...")
 
 	// Mapeia os handlers para os tópicos
-	handlerMap := make(map[string]func(*kafka.Message) error)
+	handlerMap := make(map[string]func(*kafka.Message) error, len(topicParams))
 	for _, param := range topicParams {
 		handlerMap[param.Topic] = param.Handler
 	}
 
-	// Inicia leitura das mensagens
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			msg, err := consumer.ReadMessage(-1)
-			if err != nil {
-				log.Printf("Erro ao ler mensagem: %v\n", err)
-				continue
-			}
-
-			// Recuperar o handler associado ao tópico
-			handler, exists := handlerMap[*msg.TopicPartition.Topic]
-			if !exists {
-				log.Printf("Nenhum handler encontrado para o tópico: %s\n", *msg.TopicPartition.Topic)
-				continue
-			}
-
-			// Processar a mensagem usando o handler
-			if err := handler(msg); err != nil {
-				log.Printf("Erro ao processar mensagem do tópico %s: %v\n", *msg.TopicPartition.Topic, err)
-				continue
-			}
-
-			// Commit manual após sucesso
-			_, commitErr := consumer.CommitMessage(msg)
-			if commitErr != nil {
-				log.Printf("Erro ao fazer commit do offset: %v", commitErr)
-			} else {
-				log.Printf("Leitura confirmada com sucesso para o tópico %s", *msg.TopicPartition.Topic)
-			}
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Consumidor encerrado")
+			return
+		default:
 		}
-	}()
 
-	// Aguardar todas as goroutines terminarem (poderia ser um shutdown controlado)
-	wg.Wait()
+		msg, err := consumer.ReadMessage(readPollTimeout)
+		if err != nil {
+			// Timeout é o caminho normal: só devolve o controle para o select.
+			var kafkaErr kafka.Error
+			if errors.As(err, &kafkaErr) && kafkaErr.Code() == kafka.ErrTimedOut {
+				continue
+			}
+
+			log.Printf("Erro ao ler mensagem: %v\n", err)
+			continue
+		}
+
+		// Recuperar o handler associado ao tópico
+		handler, exists := handlerMap[*msg.TopicPartition.Topic]
+		if !exists {
+			log.Printf("Nenhum handler encontrado para o tópico: %s\n", *msg.TopicPartition.Topic)
+			continue
+		}
+
+		// Processar a mensagem usando o handler
+		if err := handler(msg); err != nil {
+			log.Printf("Erro ao processar mensagem do tópico %s: %v\n", *msg.TopicPartition.Topic, err)
+			continue
+		}
+
+		// Commit manual após sucesso
+		if _, commitErr := consumer.CommitMessage(msg); commitErr != nil {
+			log.Printf("Erro ao fazer commit do offset: %v", commitErr)
+		} else {
+			log.Printf("Leitura confirmada com sucesso para o tópico %s", *msg.TopicPartition.Topic)
+		}
+	}
 }
 
 func PublishMessage(topic string, message string) error {
-	producer, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": KafkaBootstrapServers})
-	if err != nil {
-		return err
+	if producer == nil {
+		return errors.New("kafka producer não inicializado")
 	}
-	defer producer.Close()
 
 	deliveryChan := make(chan kafka.Event, 1)
+	defer close(deliveryChan)
 
-	err = producer.Produce(&kafka.Message{
+	err := producer.Produce(&kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 		Value:          []byte(message),
 	}, deliveryChan)
@@ -176,13 +218,16 @@ func PublishMessage(topic string, message string) error {
 	}
 
 	e := <-deliveryChan
-	m := e.(*kafka.Message)
-	if m.TopicPartition.Error != nil {
-		log.Printf("Delivery failed: %v", m.TopicPartition.Error)
-	} else {
-		log.Printf("Delivered message to %v", m.TopicPartition)
+	m, ok := e.(*kafka.Message)
+	if !ok {
+		return errors.New("evento de entrega inesperado")
 	}
-	close(deliveryChan)
+
+	if m.TopicPartition.Error != nil {
+		return m.TopicPartition.Error
+	}
+
+	log.Printf("Delivered message to %v", m.TopicPartition)
 
 	return nil
 }

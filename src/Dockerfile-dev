@@ -1,4 +1,4 @@
-FROM golang:1.26.5-bookworm AS base
+FROM golang:1.27.1-bookworm AS base
 
 ENV GO111MODULE="on"
 ENV GOOS="linux"
@@ -15,14 +15,15 @@ ENV CGO_CFLAGS="-O2 -g"
 ENV CGO_LDFLAGS="-lresolv"
 ENV PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig"
 
-# Instalar todas as ferramentas uma única vez
+# Instalar todas as ferramentas uma única vez.
+# Mantenha as versões alinhadas com o target `install_deps` do Makefile.
 RUN go install gotest.tools/gotestsum@v1.13.0 && \
         go install go.uber.org/mock/mockgen@v0.6.0 && \
         go install github.com/smartystreets/goconvey@v1.8.1 && \
-        go install github.com/go-delve/delve/cmd/dlv@v1.27.0 && \
-        go install github.com/air-verse/air@v1.67.1 && \
+        go install github.com/go-delve/delve/cmd/dlv@v1.27.1 && \
+        go install github.com/air-verse/air@v1.67.4 && \
         go install github.com/swaggo/swag/cmd/swag@v1.16.6 && \
-        go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+        go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
 
 FROM base AS dev
 WORKDIR /app

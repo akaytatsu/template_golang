@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"app/api/middleware"
 	"app/entity"
 	"app/infrastructure/repository"
 	"net/http"
-	"strconv"
 
 	usecase_user "app/usecase/user"
 
@@ -44,8 +44,7 @@ func NewUserHandler(usecaseUser usecase_user.IUsecaseUser) *UserHandlers {
 func (h UserHandlers) LoginHandler(c *gin.Context) {
 	var loginData LoginData
 
-	if err := c.ShouldBindJSON(&loginData); err != nil {
-		handleError(c, err)
+	if handleBindError(c, c.ShouldBindJSON(&loginData)) {
 		return
 	}
 
@@ -73,9 +72,12 @@ func (h UserHandlers) LoginHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/me [get]
 func (h UserHandlers) GetMeHandler(c *gin.Context) {
-	user, err := h.UsecaseUser.GetUserByToken(c.GetHeader("Authorization"))
-
-	if exception := handleError(c, err); exception {
+	// O usuário já foi resolvido pelo AuthenticatedMiddleware. Antes este
+	// handler repassava o header inteiro ("Bearer <token>") para ValidateToken,
+	// que falhava sempre por token malformado.
+	user, ok := middleware.CurrentUser(c)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
 		return
 	}
 
@@ -94,8 +96,7 @@ func (h UserHandlers) GetMeHandler(c *gin.Context) {
 func (h UserHandlers) CreateUserHandler(c *gin.Context) {
 	var entityUser entity.EntityUser
 
-	if err := c.ShouldBindJSON(&entityUser); err != nil {
-		handleError(c, err)
+	if handleBindError(c, c.ShouldBindJSON(&entityUser)) {
 		return
 	}
 
@@ -119,20 +120,24 @@ func (h UserHandlers) CreateUserHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/{id} [put]
 func (h UserHandlers) UpdateUserHandler(c *gin.Context) {
-	var entityUser entity.EntityUser
-
-	id := strconv.Itoa(c.GetInt("id"))
-
-	dataInt, _ := strconv.Atoi(id)
-
-	entityUser.ID = dataInt
-
-	if err := c.ShouldBindJSON(&entityUser); err != nil {
-		handleError(c, err)
+	// c.GetInt("id") lia o contexto do Gin, onde "id" nunca é colocado — o id
+	// vem do path param, então o update sempre mirava o registro 0.
+	id, err := pathID(c)
+	if err != nil {
+		handleBindError(c, err)
 		return
 	}
 
-	err := h.UsecaseUser.Update(&entityUser)
+	var entityUser entity.EntityUser
+
+	if handleBindError(c, c.ShouldBindJSON(&entityUser)) {
+		return
+	}
+
+	// Depois do bind: o id da rota é a fonte da verdade, não o corpo.
+	entityUser.ID = id
+
+	err = h.UsecaseUser.Update(&entityUser)
 
 	if exception := handleError(c, err); exception {
 		return
@@ -151,16 +156,22 @@ func (h UserHandlers) UpdateUserHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/{id} [delete]
 func (h UserHandlers) DeleteUserHandler(c *gin.Context) {
-	var entityUser entity.EntityUser
-
-	if err := c.ShouldBindJSON(&entityUser); err != nil {
-		handleError(c, err)
+	// A rota é DELETE /api/user/:id, mas o handler exigia o usuário no corpo da
+	// requisição — e o repositório resolve o registro pelo e-mail. Buscar pelo
+	// id da rota e então remover.
+	id, err := pathID(c)
+	if err != nil {
+		handleBindError(c, err)
 		return
 	}
 
-	err := h.UsecaseUser.Delete(&entityUser)
+	user, err := h.UsecaseUser.GetUser(id)
 
 	if exception := handleError(c, err); exception {
+		return
+	}
+
+	if err := h.UsecaseUser.Delete(user); handleError(c, err) {
 		return
 	}
 
@@ -180,14 +191,17 @@ func (h UserHandlers) DeleteUserHandler(c *gin.Context) {
 func (h UserHandlers) UpdatePasswordHandler(c *gin.Context) {
 	var updatePasswordData UpdateUserPasswordData
 
-	if err := c.ShouldBindJSON(&updatePasswordData); err != nil {
-		handleError(c, err)
+	if handleBindError(c, c.ShouldBindJSON(&updatePasswordData)) {
 		return
 	}
 
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, err := pathID(c)
+	if err != nil {
+		handleBindError(c, err)
+		return
+	}
 
-	err := h.UsecaseUser.UpdatePassword(id, updatePasswordData.OldPassword, updatePasswordData.NewPassword, updatePasswordData.ConfirmPassword)
+	err = h.UsecaseUser.UpdatePassword(id, updatePasswordData.OldPassword, updatePasswordData.NewPassword, updatePasswordData.ConfirmPassword)
 
 	if exception := handleError(c, err); exception {
 		return
@@ -204,21 +218,33 @@ func (h UserHandlers) UpdatePasswordHandler(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param search query string false "Search"
 // @Param active query string false "Active"
-// @Success 200 {object} entity.EntityUser "success"
+// @Param page query int false "Page (0-indexed)"
+// @Param page_size query int false "Page size (max 100)"
+// @Success 200 {object} PaginationResponse "success"
 // @Router /api/user/list [get]
 func (h UserHandlers) GetUsersHandler(c *gin.Context) {
-	var filters entity.EntityUserFilters
+	page, pageSize := GetPaginationParams(c)
 
-	filters.Search = c.Query("search")
-	filters.Active = c.Query("active")
+	filters := entity.EntityUserFilters{
+		Search:   c.Query("search"),
+		Active:   c.Query("active"),
+		Page:     page,
+		PageSize: pageSize,
+	}
 
-	users, err := h.UsecaseUser.GetUsers(filters)
+	users, total, err := h.UsecaseUser.GetUsers(filters)
 
 	if exception := handleError(c, err); exception {
 		return
 	}
 
-	jsonResponse(c, http.StatusOK, users)
+	jsonResponse(c, http.StatusOK, PaginationResponse{
+		TotalPages:     GetTotalPages(total, pageSize),
+		Page:           page,
+		PageSize:       pageSize,
+		TotalRegisters: int(total),
+		Registers:      users,
+	})
 }
 
 // @Summary Get user
@@ -231,7 +257,11 @@ func (h UserHandlers) GetUsersHandler(c *gin.Context) {
 // @Success 200 {object} entity.EntityUser "success"
 // @Router /api/user/{id} [get]
 func (h UserHandlers) GetUserHandler(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, err := pathID(c)
+	if err != nil {
+		handleBindError(c, err)
+		return
+	}
 
 	user, err := h.UsecaseUser.GetUser(id)
 

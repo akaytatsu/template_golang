@@ -26,6 +26,18 @@ definitions:
     - name
     - password
     type: object
+  handlers.PaginationResponse:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      registers: {}
+      total_pages:
+        type: integer
+      total_registers:
+        type: integer
+    type: object
 info:
   contact: {}
 paths:
@@ -168,13 +180,21 @@ paths:
         in: query
         name: active
         type: string
+      - description: Page (0-indexed)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: page_size
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: success
           schema:
-            $ref: '#/definitions/entity.EntityUser'
+            $ref: '#/definitions/handlers.PaginationResponse'
       security:
       - ApiKeyAuth: []
       summary: Get users

@@ -2,7 +2,7 @@
 # STAGE 1: Builder
 # ============================================================================
 # syntax=docker/dockerfile:1
-FROM golang:1.26.5-bookworm AS builder
+FROM golang:1.27.1-bookworm AS builder
 
 # Environment variables for build
 ENV CGO_ENABLED=1 \
@@ -81,8 +81,10 @@ COPY --from=builder --chown=nonroot:nonroot /tmp /tmp
 EXPOSE 8080
 
 # Health check
+# Forma exec obrigatória: a imagem distroless não tem shell, então `|| exit 1`
+# não seria interpretado. O próprio binário faz o probe via flag -healthcheck.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["/app/app_bin", "-healthcheck"] || exit 1
+    CMD ["/app/app_bin", "-healthcheck"]
 
 # Use ENTRYPOINT for fixed command, CMD for default arguments
 ENTRYPOINT ["/app/app_bin"]

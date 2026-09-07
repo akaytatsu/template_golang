@@ -6,19 +6,25 @@ This is a Go template project implementing **Clean Architecture** principles for
 
 ## Go Version
 
-- **Required:** Go 1.26.5+
-- **Docker image:** `golang:1.26.5-bookworm`
+- **Required:** Go 1.27.1+
+- **Docker image:** `golang:1.27.1-bookworm`
+- Pinned for the host in `mise.toml`; keep it in sync with `src/go.mod`, `src/Dockerfile` and `src/Dockerfile-dev`.
 
 ## Key Commands
 
 ### Development
 ```bash
-make init          # Copy .env.sample to .env
+make help          # List every target (default goal)
+make init          # Create src/.env from src/.env.sample + install gopls
 make up            # Start all services (app, db, kafka, mail)
+make up-prod       # Start only the app with the production Dockerfile
 make stop          # Stop all services
+make down          # Stop and remove the containers
 make logs          # Tail all service logs
 make log           # Tail app logs only
+make logf          # Follow app logs
 make sh            # Open shell in app container (e.g., make sh app)
+make generate      # Regenerate the mocks (go generate ./...)
 ```
 
 ### Testing
@@ -54,8 +60,13 @@ make vulncheck               # Go vulnerability check via govulncheck
 
 ### Docs
 ```bash
-make swagger    # Generate Swagger/OpenAPI docs
+make swagger    # Generate Swagger/OpenAPI docs (runs in the container)
 ```
+
+**Sobre o swag v2 (OpenAPI 3):** ainda em `v2.0.0-rc5`, e o `gin-swagger` não
+tem release v2 compatível. Manter o swag v1 até o gin-swagger acompanhar.
+O `swag --version` reporta `v1.16.4` mesmo na v1.16.6 — o const de versão está
+hardcoded upstream, não é sinal de instalação errada.
 
 ## Architecture
 
@@ -90,29 +101,33 @@ src/
 | Service | Image | Port |
 |---------|-------|------|
 | app | Local build | 8080 (API), 2345 (Delve) |
-| db | postgres:16-bookworm | 5432 |
-| kafka | confluentinc/cp-kafka:8.2.2 | 9092 |
-| zookeeper | confluentinc/cp-zookeeper:8.2.2 | 2181 |
-| webkafka | provectuslabs/kafka-ui:v0.7.2 | 9030 |
-| mail | mailhog/mailhog:v1.1.0 | 8025 |
+| db | postgres:16-trixie | 5432 |
+| kafka | confluentinc/cp-kafka:8.3.1 (KRaft) | 9092 |
+| webkafka | ghcr.io/kafbat/kafka-ui:v1.0.0 | 9030 |
+| mail | axllent/mailpit:v1.31.1 | 8025 (UI), 1025 (SMTP) |
+
+Kafka roda em modo **KRaft** — não há serviço ZooKeeper. O `db` persiste em
+`/var/lib/postgresql/data` no volume `data`.
 
 ## Development Tools (installed in Dockerfile-dev)
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| air | v1.67.1 | Hot reload |
-| dlv | v1.27.0 | Debugger |
+| air | v1.67.4 | Hot reload |
+| dlv | v1.27.1 | Debugger |
 | gotestsum | v1.13.0 | Test runner |
 | mockgen | v0.6.0 | Mock generation |
 | goconvey | v1.8.1 | BDD test framework |
 | swag | v1.16.6 | Swagger doc generation |
-| govulncheck | v1.6.0 | Vulnerability scanning |
+| govulncheck | v1.7.0 | Vulnerability scanning |
 
 ## Code Style
 
 - Formatter: `gofumpt` (stricter gofmt)
 - Imports: `goimports`
-- Linter: `golangci-lint` v2 (config: `src/.golangci.yml`)
+- Linter: `golangci-lint` v2.13.2 (config: `src/.golangci.yml`) — o binário precisa ser compilado com Go >= a versão do `go.mod`, senão recusa a config
+- Formatter local: `gofumpt` v0.11.0. Use `make lint` (que roda `golangci-lint fmt`) — a convenção de imports do projeto mantém `app/...` no mesmo grupo da stdlib
+- Rode `make install_deps` após trocar a versão do Go, para recompilar as ferramentas
 - Linters enabled: bodyclose, gocritic, gosec, misspell, noctx, nolintlint, rowserrcheck, sqlclosecheck, staticcheck, tparallel, whitespace
 
 ## Environment Variables
@@ -122,6 +137,7 @@ Key env vars in `src/.env`:
 - `POSTGRES_*` — database connection
 - `KAFKA_*` — Kafka bootstrap server and client config
 - `JWT_SECRET_KEY` — JWT signing key
+- `IS_RELEASE` — ativa o modo release do Gin (atenção: o nome correto é `IS_RELEASE`, não `ISRELEASE`)
 - `EMAIL_*` — SMTP/mail config
 - `DEFAULT_ADMIN_*` — initial admin credentials
 
@@ -134,10 +150,10 @@ Key env vars in `src/.env`:
 | confluentinc/confluent-kafka-go/v2 | Kafka client (CGO) |
 | golang-jwt/jwt/v5 | JWT auth |
 | go-co-op/gocron/v2 | Cron scheduling |
-| swaggo/swag + gin-swagger | API docs |
+| swaggo/swag + gin-swagger | API docs (Swagger 2.0) |
 | stretchr/testify | Test assertions |
 | smartystreets/goconvey | BDD testing |
-| go.uber.org/mock | Mock generation |
+| go.uber.org/mock | Mock generation (via `tool` directive no go.mod: `go tool mockgen`) |
 | golang.org/x/crypto | bcrypt password hashing |
 
 ## Build Notes
@@ -147,3 +163,4 @@ Key env vars in `src/.env`:
 - Binary stripped and statically linked
 - Build flags: `-ldflags="-w -s -linkmode external -extldflags '-static -Wl,-z,relro,-z,now'"` 
 - `GOWORK=off` during Docker builds
+- O `HEALTHCHECK` chama `app_bin -healthcheck`, uma flag implementada em `main.go` que bate em `/health` (a imagem distroless não tem shell)

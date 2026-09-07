@@ -10,12 +10,12 @@ type RepositoryUser struct {
 	DB *gorm.DB
 }
 
-func NewUserPostgres(DB *gorm.DB) *RepositoryUser {
-	return &RepositoryUser{DB: DB}
+func NewUserPostgres(db *gorm.DB) *RepositoryUser {
+	return &RepositoryUser{DB: db}
 }
 
 func (u *RepositoryUser) GetByID(id int) (user *entity.EntityUser, err error) {
-	u.DB.First(&user, id)
+	err = u.DB.First(&user, id).Error
 
 	return user, err
 }
@@ -56,26 +56,46 @@ func (u *RepositoryUser) GetUsersFromIDs(ids []int) (users []entity.EntityUser, 
 	return users, err
 }
 
-func (u *RepositoryUser) GetUsers(filters entity.EntityUserFilters) (users []entity.EntityUser, err error) {
-	users = make([]entity.EntityUser, 0)
-
-	DBFind := u.DB
+// applyUserFilters aplica os filtros de busca sem paginação, para que a mesma
+// cláusula sirva ao Count e ao Find.
+func (u *RepositoryUser) applyUserFilters(filters entity.EntityUserFilters) *gorm.DB {
+	query := u.DB.Model(&entity.EntityUser{})
 
 	if filters.Search != "" {
-		DBFind = DBFind.Where("name LIKE ? or email LIKE ?", "%"+filters.Search+"%", "%"+filters.Search+"%")
+		query = query.Where("name LIKE ? or email LIKE ?", "%"+filters.Search+"%", "%"+filters.Search+"%")
 	}
 
 	if filters.Active != "" {
-		DBFind = DBFind.Where("active = ?", filters.Active)
+		query = query.Where("active = ?", filters.Active)
 	}
 
-	err = DBFind.Find(&users).Error
+	if len(filters.IDs) > 0 {
+		query = query.Where("id IN ?", filters.IDs)
+	}
 
-	return users, err
+	return query
+}
+
+func (u *RepositoryUser) GetUsers(filters entity.EntityUserFilters) (users []entity.EntityUser, total int64, err error) {
+	users = make([]entity.EntityUser, 0)
+
+	if err = u.applyUserFilters(filters).Count(&total).Error; err != nil {
+		return users, 0, err
+	}
+
+	query := u.applyUserFilters(filters)
+
+	if filters.PageSize > 0 {
+		query = query.Limit(filters.PageSize).Offset(filters.Page * filters.PageSize)
+	}
+
+	err = query.Find(&users).Error
+
+	return users, total, err
 }
 
 func (u *RepositoryUser) GetUser(id int) (user *entity.EntityUser, err error) {
-	u.DB.First(&user, id)
+	err = u.DB.First(&user, id).Error
 
 	return user, err
 }

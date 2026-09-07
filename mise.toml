@@ -1,0 +1,4 @@
+[tools]
+# Mantenha alinhado com o `go` directive de src/go.mod e com a tag das imagens
+# em src/Dockerfile e src/Dockerfile-dev.
+go = "1.27.1"

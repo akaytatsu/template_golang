@@ -1,5 +1,15 @@
 version: "2"
 linters:
+  settings:
+    misspell:
+      # O misspell não detecta idioma: ele casa substrings contra um dicionário
+      # de erros comuns do inglês. Como os comentários deste projeto são em
+      # português, palavras válidas em pt-BR caem como falso positivo.
+      # Acrescente aqui conforme aparecerem.
+      ignore-rules:
+        - correspondente
+        - devolvendo
+        - presentes
   enable:
     - bodyclose
     - gocritic
@@ -21,6 +31,10 @@ linters:
       - text: '(slog|log)\.\w+'
         linters:
           - noctx
+      # Senhas e tokens em fixtures de teste não são credenciais vazadas.
+      - path: _test\.go
+        linters:
+          - gosec
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

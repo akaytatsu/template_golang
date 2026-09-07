@@ -10,8 +10,8 @@ import (
 	usecase_user "app/usecase/user"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"go.uber.org/mock/gomock"
 	"github.com/smartystreets/goconvey/convey"
+	"go.uber.org/mock/gomock"
 )
 
 func TestKafkaHandleUser_CreateUser(t *testing.T) {
